@@ -261,7 +261,11 @@ public class QryEval {
       } else if (token.equalsIgnoreCase("#and")) {
         currentOp = new QryopSlAnd();
         stack.push(currentOp);
-      } else if (token.equalsIgnoreCase("#syn")) {
+      } else if (token.equalsIgnoreCase("#or")) {
+          currentOp = new QryopSlOr();
+          stack.push(currentOp);
+      }
+        else if (token.equalsIgnoreCase("#syn")) {
         currentOp = new QryopIlSyn();
         stack.push(currentOp);
       } else if (token.startsWith(")")) { // Finish current query operator.

@@ -49,7 +49,7 @@ public class QryopSlScore extends QryopSl {
    */
   public QryResult evaluate(RetrievalModel r) throws IOException {
 
-    if (r instanceof RetrievalModelUnrankedBoolean)
+    if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (evaluateBoolean (r));
 
     return null;
@@ -79,7 +79,8 @@ public class QryopSlScore extends QryopSl {
       if (r instanceof RetrievalModelUnrankedBoolean) {
     	result.docScores.add(result.invertedList.postings.get(i).docid,
 			   (float) 1.0);
-      }
+      }      
+      // Ranked Boolean. Matching documents get a score equal to tf.
       else {
         result.docScores.add(result.invertedList.postings.get(i).docid,
 			   (float) result.invertedList.postings.get(i).tf);
@@ -106,7 +107,7 @@ public class QryopSlScore extends QryopSl {
    */
   public double getDefaultScore (RetrievalModel r, long docid) throws IOException {
 
-    if (r instanceof RetrievalModelUnrankedBoolean)
+    if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (0.0);
 
     return 0.0;

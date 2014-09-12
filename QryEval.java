@@ -68,7 +68,8 @@ public class QryEval {
     scan.close();
     
     // parameters required for this example to run
-    if (!params.containsKey("indexPath") || !params.containsKey("queryFilePath")) {
+    if (!params.containsKey("indexPath") || !params.containsKey("queryFilePath")
+    		|| !params.containsKey("retrievalAlgorithm")) {
       System.err.println("Error: Parameters were missing.");
       System.exit(1);
     }
@@ -83,7 +84,17 @@ public class QryEval {
 
     DocLengthStore s = new DocLengthStore(READER);
 
-    RetrievalModel model = new RetrievalModelUnrankedBoolean();
+    RetrievalModel model = null;
+    if (params.get("retrievalAlgorithm").equals("UnrankedBoolean")) {
+      model = new RetrievalModelUnrankedBoolean();
+    }
+    else if (params.get("retrievalAlgorithm").equals("RankedBoolean")) {
+      model = new RetrievalModelRankedBoolean();
+    }
+    else {
+      System.err.println("Error: Retrieval algorithm not implemented.");
+      System.exit(1);
+    }
 
     /*
      *  The code below is an unorganized set of examples that show

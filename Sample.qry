@@ -1,2 +1,4 @@
-#AND (apple #SYN(pie banana))
 #AND (apple)
+#AND (pie)
+#AND (apple pie)
+#AND (apple #SYN(computer pie))

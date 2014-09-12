@@ -39,7 +39,7 @@ public class QryopSlAnd extends QryopSl {
    */
   public QryResult evaluate(RetrievalModel r) throws IOException {
 
-    if (r instanceof RetrievalModelUnrankedBoolean)
+    if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (evaluateBoolean (r));
 
     return null;
@@ -89,30 +89,39 @@ public class QryopSlAnd extends QryopSl {
 
       int ptr0Docid = ptr0.scoreList.getDocid (ptr0.nextDoc);
       double docScore = 1.0;
+      List<Double> ptrsScores = new ArrayList<Double>();
+      ptrsScores.add(ptr0.scoreList.getDocidScore(ptr0.nextDoc));
 
       //  Do the other query arguments have the ptr0Docid?
 
       for (int j=1; j<this.daatPtrs.size(); j++) {
 
-	DaaTPtr ptrj = this.daatPtrs.get(j);
-
-	while (true) {
-	  if (ptrj.nextDoc >= ptrj.scoreList.scores.size())
-	    break EVALUATEDOCUMENTS;		// No more docs can match
-	  else
-	    if (ptrj.scoreList.getDocid (ptrj.nextDoc) > ptr0Docid)
-	      continue EVALUATEDOCUMENTS;	// The ptr0docid can't match.
-	  else
-	    if (ptrj.scoreList.getDocid (ptrj.nextDoc) < ptr0Docid)
-	      ptrj.nextDoc ++;			// Not yet at the right doc.
-	  else
-	      //System.out.println(ptrj.scoreList.getDocidScore(ptrj.nextDoc));
-		  break;				// ptrj matches ptr0Docid
-	}
+		DaaTPtr ptrj = this.daatPtrs.get(j);
+	
+		while (true) {
+		  if (ptrj.nextDoc >= ptrj.scoreList.scores.size())
+		    break EVALUATEDOCUMENTS;		// No more docs can match
+		  else
+		    if (ptrj.scoreList.getDocid (ptrj.nextDoc) > ptr0Docid)
+		      continue EVALUATEDOCUMENTS;	// The ptr0docid can't match.
+		  else
+		    if (ptrj.scoreList.getDocid (ptrj.nextDoc) < ptr0Docid)
+		      ptrj.nextDoc ++;			// Not yet at the right doc.
+		  else {
+			  ptrsScores.add(ptrj.scoreList.getDocidScore(ptrj.nextDoc));
+			  break;				// ptrj matches ptr0Docid
+		  }
+		}
       }
 
       //  The ptr0Docid matched all query arguments, so save it.
-
+      if (r instanceof RetrievalModelRankedBoolean) {
+    	/*for (int i = 0; i < ptrsScores.size(); i ++) {
+    		System.out.println(ptrsScores.get(i));
+    	}
+	    System.out.println("size: " + ptrsScores.size());*/
+    	docScore = min(ptrsScores);
+      }
       result.docScores.add (ptr0Docid, docScore);
     }
 
@@ -131,7 +140,7 @@ public class QryopSlAnd extends QryopSl {
    */
   public double getDefaultScore (RetrievalModel r, long docid) throws IOException {
 
-    if (r instanceof RetrievalModelUnrankedBoolean)
+    if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (0.0);
 
     return 0.0;
@@ -150,4 +159,20 @@ public class QryopSlAnd extends QryopSl {
 
     return ("#AND( " + result + ")");
   }
+  
+  /*  Return the max value.
+   * 
+   * 
+   */
+  public double min(List<Double> l) {
+    double res;
+    res = 100000;
+    for (int i = 0; i < l.size(); i ++) {
+      if (l.get(i) < res) {
+        res = l.get(i);
+      }
+    }
+    return res;
+  }
+  
 }

@@ -1,4 +1,4 @@
 queryFilePath=Sample.qry
-indexPath=../index_toy
-trecEvalOutputPath=Sample.teIn
+indexPath=../index_full
+trecEvalOutputPath=New.teIn
 retrievalAlgorithm=RankedBoolean

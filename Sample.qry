@@ -1,6 +1,1 @@
-#OR (apple)
-#OR (pie)
-#OR (apple pie)
-#OR (apple #SYN(computer pie))
-#OR (banana pie)
-apple
+#AND (apple bananas)

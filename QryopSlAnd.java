@@ -122,6 +122,7 @@ public class QryopSlAnd extends QryopSl {
 	    System.out.println("size: " + ptrsScores.size());*/
     	docScore = min(ptrsScores);
       }
+      //System.out.println("DocID: " + ptr0Docid);
       result.docScores.add (ptr0Docid, docScore);
     }
 

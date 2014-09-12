@@ -146,7 +146,7 @@ public class QryEval {
       qTree = parseQuery (query[1]);
       System.out.println(query[0] + " " + query[1]);
       QryResult result = qTree.evaluate (model);
-      //printResults (query, result);
+      //printResults (query[1], result);
       
       outputResults(bw, query[0], result, nDoc);
       //queryID ++;
@@ -273,7 +273,7 @@ public class QryEval {
     while (tokens.hasMoreTokens()) {
 
       token = tokens.nextToken();
-      System.out.println("Original token: " + token);
+      //System.out.println("Original token: " + token);
 
       if (token.matches("[ ,(\t\n\r]")) {
         // Ignore most delimiters.
@@ -284,12 +284,21 @@ public class QryEval {
         currentOp = new QryopSlOr();
         stack.push(currentOp);
       } else if (token.equalsIgnoreCase("#syn")) {
-        currentOp = new QryopIlSyn();
+        currentOp = new QryopSlScore();
+        stack.push(currentOp);
+    	currentOp = new QryopIlSyn();
         stack.push(currentOp);
       } else if (token.startsWith("#NEAR/")) {
     	  ////////////////////////////////////////
-    	currentOp = new QryopIlNear();
+    	//char[] numC = new char[10];
+    	int num = 0;
+    	String[] strs = token.split("/");
+        num = Integer.parseInt(strs[1]);
+        currentOp = new QryopSlScore();
+        stack.push(currentOp);
+    	currentOp = new QryopIlNear(num);
     	stack.push(currentOp);
+    	
       }
     	else if (token.startsWith(")")) { // Finish current query operator.
         // If the current query operator is not an argument to
@@ -314,7 +323,7 @@ public class QryEval {
         // the token specifies a particular field (e.g., apple.title).
     	if (tokenizeQuery(token).length != 0) {
           token = tokenizeQuery(token)[0];
-          System.out.println("After proc: " + token);
+          //System.out.println("After proc: " + token);
           currentOp.add(new QryopIlTerm(token));
     	}
       }

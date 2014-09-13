@@ -86,7 +86,7 @@ public class QryopSlOr extends QryopSl {
       for (int i=0; i<this.daatPtrs.size(); i++) {
 		DaaTPtr ptri = this.daatPtrs.get(i);
 	
-		if (ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
+		if (!ptri.scoreList.scores.isEmpty() && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
 		  //positions.addAll (ptri.invList.postings.get(ptri.nextDoc).positions);
 		  ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));
 		  ptri.nextDoc ++;
@@ -128,8 +128,8 @@ public class QryopSlOr extends QryopSl {
 
     for (int i=0; i<this.daatPtrs.size(); i++) {
       DaaTPtr ptri = this.daatPtrs.get(i);
-      if (nextDocid > ptri.scoreList.getDocid (ptri.nextDoc))
-	nextDocid = ptri.scoreList.getDocid (ptri.nextDoc);
+      if (!ptri.scoreList.scores.isEmpty() && nextDocid > ptri.scoreList.getDocid (ptri.nextDoc))
+	    nextDocid = ptri.scoreList.getDocid (ptri.nextDoc);
       }
 
     return (nextDocid);

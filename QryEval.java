@@ -149,9 +149,10 @@ public class QryEval {
       qTree = parseQuery (query[1]);
       System.out.println(query[0] + " " + query[1]);
       QryResult result = qTree.evaluate (model);
-      printResults (query[1], result);
-      
+      //printResults (query[1], result);
+      //System.out.println("Before output");
       outputResults(bw, query[0], result, nDoc, model);
+      //System.out.println("After output");
       //queryID ++;
     }
     br.close();
@@ -303,7 +304,7 @@ public class QryEval {
         // the token specifies a particular field (e.g., apple.title).
     	if (tokenizeQuery(token).length != 0) {
           token = tokenizeQuery(token)[0];
-          System.out.println("After proc: " + token);
+          //System.out.println("After proc: " + token);
           if (token.contains(".")) {
         	String[] termStrs = token.split("\\.");
         	//System.out.println(termStrs.length);
@@ -424,21 +425,25 @@ public class QryEval {
       writer.write(queryID + " Q0 dummy 1 0 run-1");
       writer.newLine();
     } else {
-      double[] scores = new double[s];
-      String[] ids = new String[s];
+      List resultList = new ArrayList();
+      
       for (int i = 0; i < s; i ++) {
-    	scores[i] = result.docScores.getDocidScore(i);
-    	ids[i] = getExternalDocid (result.docScores.getDocid(i));
+    	resultList.add(new ResultElement(getExternalDocid (result.docScores.getDocid(i)), result.docScores.getDocidScore(i)));
+    	//scores[i] = result.docScores.getDocidScore(i);
+    	//ids[i] = getExternalDocid (result.docScores.getDocid(i));
       }
       if (r instanceof RetrievalModelUnrankedBoolean) {
-    	sortResultUnranked(ids); 
+    	//sortResultUnranked(ids);    	  
+    	Collections.sort(resultList, new ResultComparatorUnranked());
       } else {
-    	sortResultRanked(ids, scores);
+    	//sortResultRanked(ids, scores);
+    	Collections.sort(resultList, new ResultComparatorRanked());
       }
       
       for (int i = 0; i < s && i < nDoc; i++) {
-    	writer.write(queryID + " Q0 " + ids[i]
-    			+ " " + (i+1) + " " + (int)scores[i]
+    	ResultElement elemTmp = (ResultElement)resultList.get(i); 
+    	writer.write(queryID + " Q0 " + elemTmp.getId()
+    			+ " " + (i+1) + " " + (int)elemTmp.getScore()
     			+ " run-1");
     	writer.newLine();
       }
@@ -499,10 +504,45 @@ public class QryEval {
   
 }
 
-
-/*
-public class ReverseComparator implements Comparator<Double> {
-  public Double compare(Double o1, Double o2) {
-	return o2 - o1;
+class ResultElement {
+  public String id;
+  public double score;
+  
+  public ResultElement(String id, double score) {
+	this.id = id;
+	this.score = score;
   }
-}*/
+  
+  public String getId() {
+	return id;
+  }
+  
+  public double getScore() {
+	return score;
+  }
+}
+
+
+
+class ResultComparatorRanked implements Comparator {
+  public int compare(Object o1, Object o2) {
+  	
+    ResultElement res1 = (ResultElement)o1;
+    ResultElement res2 = (ResultElement)o2;
+    //int flag = 0;
+    
+    if (res1.score < res2.score)  return 1;
+    else if (res1.score > res2.score)  return -1;
+    else  return res1.id.compareTo(res2.id);
+  }
+}
+
+class ResultComparatorUnranked implements Comparator {
+  public int compare(Object o1, Object o2) {
+  	
+    ResultElement res1 = (ResultElement)o1;
+    ResultElement res2 = (ResultElement)o2;
+
+    return res1.id.compareTo(res2.id);
+  }
+}

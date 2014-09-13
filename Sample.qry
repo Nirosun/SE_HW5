@@ -1,4 +1,1 @@
-4:apple
-1:#NEAR/3(apple banana)
-2:#NEAR/3(banana fruit)
-3:#NEAR/3(apple banana fruit)
+5:#AND(breakfast apple dinner)

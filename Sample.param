@@ -1,4 +1,4 @@
-queryFilePath=queriesOR.txt
+queryFilePath=Sample.qry
 indexPath=../index_full
-trecEvalOutputPath=BOW-OR-Unranked.trec
-retrievalAlgorithm=UnrankedBoolean
+trecEvalOutputPath=Sample.trec
+retrievalAlgorithm=RankedBoolean

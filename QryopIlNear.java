@@ -67,8 +67,6 @@ public class QryopIlNear extends QryopIl {
     for ( ; ptr0.nextDoc < ptr0.invList.postings.size(); ptr0.nextDoc ++) {
 
       int ptr0Docid = ptr0.invList.getDocid (ptr0.nextDoc);
-      //List<Double> ptrsScores = new ArrayList<Double>();
-      //ptrsScores.add(ptr0.scoreList.getDocidScore(ptr0.nextDoc));
 
       //  Do the other query arguments have the ptr0Docid?
 
@@ -92,17 +90,14 @@ public class QryopIlNear extends QryopIl {
       }
       
       
-      //  Dig into the specific document.
-      List<Integer> positions = new ArrayList<Integer>();
-      List<Integer> ptrs = new ArrayList<Integer>();
-      List<Integer> locs = new ArrayList<Integer>();
-      List<Integer> posSizes = new ArrayList<Integer>();
-      //List<DaatPtr> daats = new ArrayList<DaatPtr>();
-      int daatPtrsSize = this.daatPtrs.size();
+      // Evaluate in the specific document.
+      List<Integer> positions = new ArrayList<Integer>();  // positions finded in this doc
+      List<Integer> ptrs = new ArrayList<Integer>();  // pointers to the index of arrays "positions"
+      List<Integer> locs = new ArrayList<Integer>();  // locations of each terms in this doc
+      List<Integer> posSizes = new ArrayList<Integer>();  // sizes of arrays "positions"
+      int daatPtrsSize = this.daatPtrs.size();  // number of terms being processed
       
-      //System.out.println("DocID: " + ptr0Docid);
-      //System.out.println("daatPtrsSize: " + daatPtrsSize);
-      
+      // initialize
       for (int i = 0; i < daatPtrsSize; i ++)
       {
         ptrs.add(0);
@@ -111,23 +106,23 @@ public class QryopIlNear extends QryopIl {
         posSizes.add(this.daatPtrs.get(i).invList.postings.get(nextD).positions.size());
       }
       
-      EVALUATELOCS:
+      EVALUATELOCS:  // evaluate through the locations in arrays "positions"
       while (true)
       {
     	for (int i = 0; i < daatPtrsSize; i ++)
     	{
-          if (ptrs.get(i) >= posSizes.get(i))
+          if (ptrs.get(i) >= posSizes.get(i))    
           {
-        	break EVALUATELOCS;
+        	break EVALUATELOCS;		// pointer out of range, end search in this doc
           }
           int nextD = this.daatPtrs.get(i).nextDoc;
           locs.set(i, this.daatPtrs.get(i).invList.postings.get(nextD).positions.get(ptrs.get(i)));
     	}
-    	EVALUATECOMBO:
+    	EVALUATECOMBO:  	// evaluate one possible term locs combination
     	for (int i = 0; i < daatPtrsSize - 1; i ++)
     	{
           if (locs.get(i + 1) - locs.get(i) > this.distance 
-        		  || locs.get(i + 1) - locs.get(i) <= 0)
+        		  || locs.get(i + 1) - locs.get(i) <= 0)	// not satisfy #NEAR range requirement 
           {
         	int minLoc = min(locs);
         	for (int j = 0; j < daatPtrsSize; j ++)
@@ -135,35 +130,23 @@ public class QryopIlNear extends QryopIl {
         	  if (locs.get(j) == minLoc)
         	  {
         		ptrs.set(j, ptrs.get(j) + 1);
-        		//locs.set(j, this.daatPtrs.get(j).invList.postings.get(ptr0Docid).positions.get(ptrs.get(j)));
-        		break EVALUATECOMBO;
+        		break EVALUATECOMBO;	// increase the ptr with min loc, go find another combination
         	  }
         	}
           }
-          /*if (locs.get(i + 1) - locs.get(i) > this.distance 
-        		  || locs.get(i + 1) - locs.get(i) <= 0)
-          {
-        	  System.out.println("Oops!");
-        	  System.out.println(min(locs));
-        	  for (int k = 0; k < daatPtrsSize; k ++) {
-        	    System.out.println(locs.get(k));
-        	    
-              }
-          }*/
-          if (i == daatPtrsSize - 2)
+          if (i == daatPtrsSize - 2)	// find a correct combination
           {
         	for (int j = 0; j < daatPtrsSize; j ++)
         	{
-        	  ptrs.set(j, ptrs.get(j) + 1);        	  
-        	  //System.out.println(locs.get());
+        	  ptrs.set(j, ptrs.get(j) + 1);		// increase all ptrs
         	}
-        	positions.add(locs.get(daatPtrsSize - 1));
+        	positions.add(locs.get(daatPtrsSize - 1));	// add the location of last tarm to positions
           }
     	}  	
       }
     	  
       if (!positions.isEmpty()) {
-        result.invertedList.appendPosting (ptr0Docid, positions);
+        result.invertedList.appendPosting (ptr0Docid, positions);  //add posting of this doc to invList
         //System.out.println("Find: " + ptr0Docid);        
       }
     }
@@ -211,9 +194,9 @@ public class QryopIlNear extends QryopIl {
   }
   
   /**
-   * Find min.
-   * @param l
-   * @return
+   * Find minimum of the list
+   * @param l integer list
+   * @return minimum value
    */
   public int min(List<Integer> l) {
 	int tmp = Integer.MAX_VALUE;

@@ -63,10 +63,9 @@ public class QryopSlOr extends QryopSl {
     //syntaxCheckArgResults (this.daatPtrs);
 
     QryResult result = new QryResult ();
-    //result.invertedList.field = new String (this.daatPtrs.get(0).invList.field);
 
     //  Each pass of the loop adds 1 document to result until all of
-    //  the inverted lists are depleted.  When a list is depleted, it
+    //  the score lists are depleted.  When a list is depleted, it
     //  is removed from daatPtrs, so this loop runs until daatPtrs is empty.
 
     //  This implementation is intended to be clear.  A more efficient
@@ -78,20 +77,18 @@ public class QryopSlOr extends QryopSl {
       double docScore = 1.0;
       List<Double> ptrsScores = new ArrayList<Double>();
 
-      //  Create a new posting that is the union of the posting lists
-      //  that match the nextDocid.
-
-      //List<Integer> positions = new ArrayList<Integer>();
+      // 
 
       for (int i=0; i<this.daatPtrs.size(); i++) {
 		DaaTPtr ptri = this.daatPtrs.get(i);
 	
 		if (!ptri.scoreList.scores.isEmpty() && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
-		  //positions.addAll (ptri.invList.postings.get(ptri.nextDoc).positions);
 		  ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));
 		  ptri.nextDoc ++;
 		}
       }
+      
+      // Get the max score and add to result
       
       if (ptrsScores.size() != 0) {
     	if (r instanceof RetrievalModelRankedBoolean) {
@@ -188,9 +185,10 @@ public class QryopSlOr extends QryopSl {
     return ("#OR( " + result + ")");
   }
   
-  /*  Return the max value.
-   * 
-   * 
+  /**
+   * Return the maximum of a list
+   * @param l double list
+   * @return the maximum value
    */
   public double max(List<Double> l) {
     double res;

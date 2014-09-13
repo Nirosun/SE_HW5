@@ -167,7 +167,7 @@ public class QryopSlAnd extends QryopSl {
    */
   public double min(List<Double> l) {
     double res;
-    res = 100000;
+    res = Integer.MAX_VALUE;
     for (int i = 0; i < l.size(); i ++) {
       if (l.get(i) < res) {
         res = l.get(i);

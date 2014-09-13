@@ -451,58 +451,9 @@ public class QryEval {
     //writer.close();
   }
   
-  
-  /**
-   * Sort the results. 
-   * @param ids
-   * @param scores
-   */
-  static void sortResultRanked(String[] ids, double[] scores) {
-	  
-    String str = new String();
-    double tmp = 0;
-    
-    for (int i = 0; i < ids.length; i ++) {
-      for (int j = i; j < ids.length; j ++) {
-    	if (scores[i] < scores[j]) {
-    	  tmp = scores[i];
-    	  scores[i] = scores[j];
-    	  scores[j] = tmp; 	  
-    	  str = ids[i];
-    	  ids[i] = ids[j];
-    	  ids[j] = str;
-    	}
-    	else if (scores[i] == scores[j]) {
-    	  if (ids[i].compareTo(ids[j]) > 0) {
-    		str = ids[i];
-        	ids[i] = ids[j];
-        	ids[j] = str;
-    	  }
-    	}
-      }
-    }
-  }
-  
-  /**
-   * Sort the results. 
-   * @param ids
-   * @param scores
-   */
-  static void sortResultUnranked(String[] ids) {
-	  
-    String str = new String();   
-    for (int i = 0; i < ids.length; i ++) {
-      for (int j = i; j < ids.length; j ++) {
-    	if (ids[i].compareTo(ids[j]) > 0) {
-          str = ids[i];
-          ids[i] = ids[j];
-          ids[j] = str;
-    	}
-      }
-    }
-  }
-  
 }
+
+
 
 class ResultElement {
   public String id;

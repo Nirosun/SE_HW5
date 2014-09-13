@@ -140,6 +140,16 @@ public class QryopIlNear extends QryopIl {
         	  }
         	}
           }
+          /*if (locs.get(i + 1) - locs.get(i) > this.distance 
+        		  || locs.get(i + 1) - locs.get(i) <= 0)
+          {
+        	  System.out.println("Oops!");
+        	  System.out.println(min(locs));
+        	  for (int k = 0; k < daatPtrsSize; k ++) {
+        	    System.out.println(locs.get(k));
+        	    
+              }
+          }*/
           if (i == daatPtrsSize - 2)
           {
         	for (int j = 0; j < daatPtrsSize; j ++)
@@ -147,7 +157,7 @@ public class QryopIlNear extends QryopIl {
         	  ptrs.set(j, ptrs.get(j) + 1);        	  
         	  //System.out.println(locs.get());
         	}
-        	positions.add(locs.get(0));
+        	positions.add(locs.get(daatPtrsSize - 1));
           }
     	}  	
       }
@@ -206,7 +216,7 @@ public class QryopIlNear extends QryopIl {
    * @return
    */
   public int min(List<Integer> l) {
-	int tmp = 10000;
+	int tmp = Integer.MAX_VALUE;
 	for (int i = 0; i < l.size(); i ++) {
       if (l.get(i) < tmp) tmp = l.get(i);
 	}

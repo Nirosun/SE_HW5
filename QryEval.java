@@ -324,7 +324,14 @@ public class QryEval {
     	if (tokenizeQuery(token).length != 0) {
           token = tokenizeQuery(token)[0];
           //System.out.println("After proc: " + token);
-          currentOp.add(new QryopIlTerm(token));
+          if (token.contains(".")) {
+        	String[] termStrs = token.split("\\.");
+        	//System.out.println(termStrs.length);
+        	//System.out.println(termStrs[0] + " " + termStrs[1]);
+        	currentOp.add(new QryopIlTerm(termStrs[0], termStrs[1]));
+          } else {
+            currentOp.add(new QryopIlTerm(token));
+          }
     	}
       }
     }

@@ -1,0 +1,4 @@
+queryFilePath=QueriesAnd.txt
+indexPath=../index_full
+trecEvalOutputPath=BOW-AND-Unranked.trec
+retrievalAlgorithm=UnrankedBoolean

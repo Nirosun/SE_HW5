@@ -75,9 +75,7 @@ public class QryopSlOr extends QryopSl {
 
       int nextDocid = getSmallestCurrentDocid ();
       double docScore = 1.0;
-      List<Double> ptrsScores = new ArrayList<Double>();
-
-      // 
+      List<Double> ptrsScores = new ArrayList<Double>();  // scores of the ptri's with nextDocid 
 
       for (int i=0; i<this.daatPtrs.size(); i++) {
 		DaaTPtr ptri = this.daatPtrs.get(i);
@@ -88,8 +86,7 @@ public class QryopSlOr extends QryopSl {
 		}
       }
       
-      // Get the max score and add to result
-      
+      // Get the max score and add to result     
       if (ptrsScores.size() != 0) {
     	if (r instanceof RetrievalModelRankedBoolean) {
     	  docScore = max(ptrsScores);

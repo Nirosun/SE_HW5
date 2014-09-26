@@ -51,6 +51,12 @@ public class QryopIlNear extends QryopIl {
 
     allocDaaTPtrs (r);
     QryResult result = new QryResult ();
+    
+    /*if (this.distance == 10) {
+    	System.out.println("Wow");
+        this.daatPtrs.get(0).invList.print();
+    }*/
+  
     result.invertedList.field = new String (this.daatPtrs.get(0).invList.field);
 
     //  Exact-match NEAR/n requires that ALL invLists contain a
@@ -67,6 +73,11 @@ public class QryopIlNear extends QryopIl {
     for ( ; ptr0.nextDoc < ptr0.invList.postings.size(); ptr0.nextDoc ++) {
 
       int ptr0Docid = ptr0.invList.getDocid (ptr0.nextDoc);
+      
+      /*if (ptr0Docid == 250747 && this.distance == 10) {
+        	System.out.println("Oh!");
+        	System.out.println(ptr0.invList.postings.size());
+          }*/
 
       //  Do the other query arguments have the ptr0Docid?
 
@@ -96,6 +107,10 @@ public class QryopIlNear extends QryopIl {
       List<Integer> locs = new ArrayList<Integer>();  // locations of each terms in this doc
       List<Integer> posSizes = new ArrayList<Integer>();  // sizes of arrays "positions"
       int daatPtrsSize = this.daatPtrs.size();  // number of terms being processed
+      
+      /*if (ptr0Docid == 250747 && this.distance == 2) {
+      	System.out.println("Oh!");
+        }*/
       
       // initialize
       for (int i = 0; i < daatPtrsSize; i ++)
@@ -147,6 +162,11 @@ public class QryopIlNear extends QryopIl {
     	  
       if (!positions.isEmpty()) {
         result.invertedList.appendPosting (ptr0Docid, positions);  //add posting of this doc to invList
+        
+        /*if (ptr0Docid == 250747 && this.distance == 10) {
+          	System.out.println("Oh!");
+            }*/
+        
         //System.out.println("Find: " + ptr0Docid);        
       }
     }

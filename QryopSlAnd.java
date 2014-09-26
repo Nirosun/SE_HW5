@@ -59,6 +59,9 @@ public class QryopSlAnd extends QryopSl {
     allocDaaTPtrs (r);
     QryResult result = new QryResult ();
 
+    //this.daatPtrs.get(0).invList.print();
+    
+    
     //  Sort the arguments so that the shortest lists are first.  This
     //  improves the efficiency of exact-match AND without changing
     //  the result.
@@ -124,9 +127,9 @@ public class QryopSlAnd extends QryopSl {
       }
       //System.out.println("DocID: " + ptr0Docid);
       
-      if (ptr0Docid == 250747) {
+      /*if (ptr0Docid == 250747) {
     	System.out.println("Oh!");
-      }
+      }*/
       
       result.docScores.add (ptr0Docid, docScore);
     }

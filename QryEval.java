@@ -132,7 +132,7 @@ public class QryEval {
      *  parse it, and form the query tree automatically.
      */
     
-    System.out.println(getInternalDocid("clueweb09-en0000-99-20299"));
+    //System.out.println(getInternalDocid("clueweb09-en0000-99-20299"));
     
     Qryop qTree;
     String[] query = new String[2];
@@ -312,7 +312,8 @@ public class QryEval {
           token = tokenizeQuery(token)[0];
           if (token.contains(".")) {    // get the field
         	String[] termStrs = token.split("\\.");
-        	currentOp.add(new QryopIlTerm(termStrs[0], termStrs[1]));
+        	token = tokenizeQuery(termStrs[0])[0];
+        	currentOp.add(new QryopIlTerm(token, termStrs[1]));
           } else {
             currentOp.add(new QryopIlTerm(token));
           }

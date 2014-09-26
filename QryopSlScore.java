@@ -91,8 +91,8 @@ public class QryopSlScore extends QryopSl {
     // The SCORE operator should not return a populated inverted list.
     // If there is one, replace it with an empty inverted list.
 
-    if (result.invertedList.df > 0)
-	result.invertedList = new InvList();
+    //if (result.invertedList.df > 0)
+	  //result.invertedList = new InvList();
 
     return result;
   }

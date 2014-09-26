@@ -76,12 +76,23 @@ public class QryopSlOr extends QryopSl {
       int nextDocid = getSmallestCurrentDocid ();
       double docScore = 1.0;
       List<Double> ptrsScores = new ArrayList<Double>();  // scores of the ptri's with nextDocid 
+      
+      /*if (nextDocid == 92150) {
+    	System.out.println("Oh!");
+    	System.out.println(this.daatPtrs.size());
+      }*/
 
       for (int i=0; i<this.daatPtrs.size(); i++) {
 		DaaTPtr ptri = this.daatPtrs.get(i);
 	
 		if (!ptri.scoreList.scores.isEmpty() && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
 		  ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));
+		  
+		  /*if (ptri.scoreList.getDocidScore (ptri.nextDoc) == 2002) {
+			System.out.println("Oh!");
+		    System.out.println(nextDocid);
+		  }*/
+		  
 		  ptri.nextDoc ++;
 		}
       }

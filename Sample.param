@@ -1,4 +1,4 @@
 queryFilePath=Sample.qry
 indexPath=../index_full
 trecEvalOutputPath=Sample.trec
-retrievalAlgorithm=RankedBoolean
+retrievalAlgorithm=UnrankedBoolean

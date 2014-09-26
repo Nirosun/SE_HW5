@@ -123,6 +123,11 @@ public class QryopSlAnd extends QryopSl {
     	docScore = min(ptrsScores);
       }
       //System.out.println("DocID: " + ptr0Docid);
+      
+      if (ptr0Docid == 250747) {
+    	System.out.println("Oh!");
+      }
+      
       result.docScores.add (ptr0Docid, docScore);
     }
 

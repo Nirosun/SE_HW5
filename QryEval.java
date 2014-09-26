@@ -132,6 +132,8 @@ public class QryEval {
      *  parse it, and form the query tree automatically.
      */
     
+    System.out.println(getInternalDocid("clueweb09-en0000-99-20299"));
+    
     Qryop qTree;
     String[] query = new String[2];
     String tmp = null;
@@ -232,9 +234,11 @@ public class QryEval {
 
     qString = qString.trim();
 
-    if (qString.charAt(0) != '#') {
+    if (qString.charAt(0) != '#' || !qString.endsWith(")")) {
       qString = "#or(" + qString + ")";
     }
+    
+    System.out.println(qString);
 
     // Tokenize the query.
 
@@ -248,6 +252,7 @@ public class QryEval {
     while (tokens.hasMoreTokens()) {
 
       token = tokens.nextToken();
+      //System.out.println(token);
 
       if (token.matches("[ ,(\t\n\r]")) {
         // Ignore most delimiters.
@@ -288,6 +293,16 @@ public class QryEval {
         Qryop arg = currentOp;
         currentOp = stack.peek();
         currentOp.add(arg);
+        
+        if (currentOp instanceof QryopSlScore) {
+          stack.pop();
+          if (stack.empty())
+        	  break;
+          Qryop tmp = currentOp;
+          currentOp = stack.peek();
+          currentOp.add(tmp);
+        }
+        
       } else {
 
         // NOTE: You should do lexical processing of the token before

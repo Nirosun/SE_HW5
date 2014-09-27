@@ -12,6 +12,9 @@ import java.io.*;
 import java.util.*;
 
 public class QryopSlScore extends QryopSl {
+  
+  public int ctf;
+  public String field;
 
   /**
    *  Construct a new SCORE operator.  The SCORE operator accepts just
@@ -51,6 +54,10 @@ public class QryopSlScore extends QryopSl {
 
     if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (evaluateBoolean (r));
+    if (r instanceof RetrievalModelBM25)
+      return (evaluateBM25 ((RetrievalModelBM25)r));
+    if (r instanceof RetrievalModelIndri)
+        return (evaluateIndri ((RetrievalModelIndri)r));
 
     return null;
   }
@@ -91,11 +98,102 @@ public class QryopSlScore extends QryopSl {
     // The SCORE operator should not return a populated inverted list.
     // If there is one, replace it with an empty inverted list.
 
+    if (result.invertedList.df > 0)
+	  result.invertedList = new InvList();
+
+    return result;
+  }
+  
+
+  /**
+   *  Evaluate the query operator for BM25 retrieval model.
+   *  @param r A retrieval model that controls how the operator behaves.
+   *  @return The result of evaluating the query.
+   *  @throws IOException
+   */
+  public QryResult evaluateBM25(RetrievalModelBM25 r) throws IOException {
+
+    // Evaluate the query argument.
+    QryResult result = args.get(0).evaluate(r);
+    
+    int N = QryEval.READER.getDocCount(result.invertedList.field);
+    double avg_doclen = QryEval.READER.getSumTotalTermFreq(result.invertedList.field) / (double)N;
+    DocLengthStore dls = new DocLengthStore(QryEval.READER);
+    int df = result.invertedList.df;
+    double idf = Math.log((N - df + 0.5) / (df + 0.5));
+    
+    // do you need it???
+    //this.ctf = result.invertedList.ctf;
+    //this.field = result.invertedList.field;
+
+    // Each pass of the loop computes a score for one document. Note:
+    // If the evaluate operation above returned a score list (which is
+    // very possible), this loop gets skipped.
+
+    for (int i = 0; i < result.invertedList.df; i++) {
+
+      // DIFFERENT RETRIEVAL MODELS IMPLEMENT THIS DIFFERENTLY. 
+      long doclen = dls.getDocLength(result.invertedList.field, 
+    		  result.invertedList.postings.get(i).docid);
+      int tf = result.invertedList.postings.get(i).tf;
+      double tfWeight = tf / 
+    		  (tf + r.k_1 * (1 - r.b + r.b * doclen / avg_doclen));
+      
+      result.docScores.add(result.invertedList.postings.get(i).docid, idf * tfWeight);
+    }
+
+    // The SCORE operator should not return a populated inverted list.
+    // If there is one, replace it with an empty inverted list.
     //if (result.invertedList.df > 0)
 	  //result.invertedList = new InvList();
 
     return result;
-  }
+  }  
+  
+
+  /**
+   *  Evaluate the query operator for BM25 retrieval model.
+   *  @param r A retrieval model that controls how the operator behaves.
+   *  @return The result of evaluating the query.
+   *  @throws IOException
+   */
+  public QryResult evaluateIndri(RetrievalModelIndri r) throws IOException {
+
+    // Evaluate the query argument.
+    QryResult result = args.get(0).evaluate(r);
+    
+    long lengthC = QryEval.READER.getSumTotalTermFreq(result.invertedList.field);
+    int ctf = result.invertedList.ctf;
+    double p_qi_C = ctf / (double) lengthC;
+    DocLengthStore dls = new DocLengthStore(QryEval.READER);
+    
+    this.ctf = result.invertedList.ctf;
+    this.field = result.invertedList.field;
+
+    // Each pass of the loop computes a score for one document. Note:
+    // If the evaluate operation above returned a score list (which is
+    // very possible), this loop gets skipped.
+
+    for (int i = 0; i < result.invertedList.df; i++) {
+
+      // DIFFERENT RETRIEVAL MODELS IMPLEMENT THIS DIFFERENTLY. 
+      long length_d = dls.getDocLength(result.invertedList.field, 
+    		  result.invertedList.postings.get(i).docid);
+      int tf = result.invertedList.postings.get(i).tf;
+      double p_qi_d = (tf + r.mu * p_qi_C) / (double)(length_d + r.mu);
+      double p_lambda_qi_d = r.lambda * p_qi_d + (1 - r.lambda) * p_qi_C;
+      
+      result.docScores.add(result.invertedList.postings.get(i).docid, p_lambda_qi_d);
+    }
+
+    // The SCORE operator should not return a populated inverted list.
+    // If there is one, replace it with an empty inverted list.
+    //if (result.invertedList.df > 0)
+	  //result.invertedList = new InvList();
+
+    return result;
+  }  
+  
 
   /*
    *  Calculate the default score for a document that does not match
@@ -107,8 +205,23 @@ public class QryopSlScore extends QryopSl {
    */
   public double getDefaultScore (RetrievalModel r, long docid) throws IOException {
 
-    if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
+    if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean
+    		|| r instanceof RetrievalModelBM25)
       return (0.0);
+    
+    if (r instanceof RetrievalModelIndri) {
+      long lengthC = QryEval.READER.getSumTotalTermFreq(this.field);
+      double p_qi_C = this.ctf / (double) lengthC;
+    	
+      DocLengthStore dls = new DocLengthStore(QryEval.READER);
+      long length_d = dls.getDocLength(this.field, (int)docid);
+      int tf = 0;
+      double p_qi_d = (tf + ((RetrievalModelIndri)r).mu * p_qi_C) /
+    		  (double)(length_d + ((RetrievalModelIndri)r).mu);
+      double p_lambda_qi_d = ((RetrievalModelIndri)r).lambda * p_qi_d +
+    		  (1 - ((RetrievalModelIndri)r).lambda) * p_qi_C;
+      return p_lambda_qi_d;      
+    }
 
     return 0.0;
   }

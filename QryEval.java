@@ -95,6 +95,26 @@ public class QryEval {
     else if (params.get("retrievalAlgorithm").equals("RankedBoolean")) {
       model = new RetrievalModelRankedBoolean();
     }
+    else if (params.get("retrievalAlgorithm").equals("BM25")) {
+      model = new RetrievalModelBM25();
+      if (!params.containsKey("BM25:k_1") || !params.containsKey("BM25:b") ||
+    		  !params.containsKey("BM25:k_3")) {
+        System.err.println("Error: Parameters were missing.");
+        System.exit(1);
+      }
+      model.setParameter("k_1", params.get("BM25:k_1"));
+      model.setParameter("b", params.get("BM25:b"));
+      model.setParameter("k_3", params.get("BM25:k_3"));
+    }
+    else if (params.get("retrievalAlgorithm").equals("Indri")) {
+      model = new RetrievalModelIndri();
+      if (!params.containsKey("Indri:mu") || !params.containsKey("Indri:lambda")) {
+        System.err.println("Error: Parameters were missing.");
+        System.exit(1);
+      }
+      model.setParameter("mu", params.get("Indri:mu"));
+      model.setParameter("lambda", params.get("Indri:lambda"));
+    }
     else {
       System.err.println("Error: Retrieval algorithm not implemented.");
       System.exit(1);
@@ -145,7 +165,7 @@ public class QryEval {
     
     while((tmp = br.readLine()) != null) {
       query = tmp.split(":");
-      qTree = parseQuery (query[1]);
+      qTree = parseQuery (query[1], model);
       System.out.println(query[0] + " " + query[1]);
       QryResult result = qTree.evaluate (model);
       //printResults (query[1], result);
@@ -224,7 +244,7 @@ public class QryEval {
    *          A query tree
    * @throws IOException
    */
-  static Qryop parseQuery(String qString) throws IOException {
+  static Qryop parseQuery(String qString, RetrievalModel r) throws IOException {
 
     Qryop currentOp = null;
     Stack<Qryop> stack = new Stack<Qryop>();
@@ -234,8 +254,17 @@ public class QryEval {
 
     qString = qString.trim();
 
+
     if (qString.charAt(0) != '#' || !qString.endsWith(")")) {
-      qString = "#or(" + qString + ")";
+      if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean) {
+        qString = "#or(" + qString + ")";
+      }
+      else if (r instanceof RetrievalModelBM25) {
+    	qString = "#sum(" + qString + ")";
+      }
+      else if (r instanceof RetrievalModelIndri) {
+    	qString = "#and(" + qString + ")";
+      }
     }
     
     System.out.println(qString);
@@ -262,12 +291,15 @@ public class QryEval {
       } else if (token.equalsIgnoreCase("#or")) {
         currentOp = new QryopSlOr();
         stack.push(currentOp);
+      } else if (token.equalsIgnoreCase("#sum")) {
+        currentOp = new QryopSlSum();
+        stack.push(currentOp);
       } else if (token.equalsIgnoreCase("#syn")) {
         currentOp = new QryopSlScore();  //wrap by score operator
         stack.push(currentOp);
     	currentOp = new QryopIlSyn();
         stack.push(currentOp);
-      } else if (token.startsWith("#NEAR/")) {
+      } else if (token.startsWith("#NEAR/") || token.startsWith("#near/")) {
     	int num = 0;
     	String[] strs = token.split("/");
         num = Integer.parseInt(strs[1]);
@@ -286,10 +318,8 @@ public class QryEval {
         // processing back to the higher-level operator.
 
         stack.pop();
-
         if (stack.empty())
           break;
-
         Qryop arg = currentOp;
         currentOp = stack.peek();
         currentOp.add(arg);
@@ -439,7 +469,7 @@ public class QryEval {
       for (int i = 0; i < s && i < nDoc; i++) {
     	ResultElement elemTmp = (ResultElement)resultList.get(i); 
     	writer.write(queryID + " Q0 " + elemTmp.getId()
-    			+ " " + (i+1) + " " + (int)elemTmp.getScore()
+    			+ " " + (i+1) + " " + elemTmp.getScore()
     			+ " run-1");
     	writer.newLine();
       }

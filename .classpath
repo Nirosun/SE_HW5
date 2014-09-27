@@ -11,5 +11,14 @@
 	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lab1/lucene-4.3.0/lucene-codecs-4.3.0.jar"/>
 	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lab1/lucene-4.3.0/lucene-core-4.3.0.jar"/>
 	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lab1/lucene-4.3.0/lucene-demo-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/commons-compress-1.4.1.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/lucene-analyzers-common-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/lucene-benchmark-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/lucene-codecs-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/lucene-core-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/lucene-demo-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/lucene-queryparser-4.3.0.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/nekohtml-1.9.17.jar"/>
+	<classpathentry kind="lib" path="/Users/niro/Curriculum/11-642/labs/lucene-4.3.0/xercesImpl-2.9.1.jar"/>
 	<classpathentry kind="output" path=""/>
 </classpath>

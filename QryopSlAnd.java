@@ -7,6 +7,8 @@
 import java.io.*;
 import java.util.*;
 
+//import Qryop.DaaTPtr;
+
 public class QryopSlAnd extends QryopSl {
 
   /**
@@ -41,6 +43,9 @@ public class QryopSlAnd extends QryopSl {
 
     if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (evaluateBoolean (r));
+    if (r instanceof RetrievalModelIndri) {
+      return (evaluateIndri ((RetrievalModelIndri)r));
+    }
 
     return null;
   }
@@ -138,6 +143,103 @@ public class QryopSlAnd extends QryopSl {
 
     return result;
   }
+  
+  
+  /**
+   *  Evaluates the query operator for Indri retrieval model,
+   *  including any child operators and returns the result.
+   *  @param r A retrieval model that controls how the operator behaves.
+   *  @return The result of evaluating the query.
+   *  @throws IOException
+   */
+  public QryResult evaluateIndri(RetrievalModelIndri r) throws IOException {
+
+    //  Initialization
+
+    allocDaaTPtrs (r);
+    //syntaxCheckArgResults (this.daatPtrs);
+    //int numPtrs = this.daatPtrs.size();
+    //List<Integer> ptrsIDs = new ArrayList<Integer>();
+    /*for (int i = 0; i < this.daatPtrs.size(); i ++) {
+      ptrsIDs.add(i);
+    }*/
+    int ptrsCount = this.daatPtrs.size();
+
+    QryResult result = new QryResult ();
+
+    //  Each pass of the loop adds 1 document to result until all of
+    //  the score lists are depleted.  When a list is depleted, it
+    //  is removed from daatPtrs, so this loop runs until daatPtrs is empty.
+
+    //  This implementation is intended to be clear.  A more efficient
+    //  implementation would combine loops and use merge-sort.
+
+    while (ptrsCount > 0) {
+
+      int nextDocid = getSmallestCurrentDocid ();
+      double docScore = 1.0;
+      List<Double> ptrsScores = new ArrayList<Double>();  // scores of the ptri's with nextDocid 
+
+      for (int i=0; i<this.daatPtrs.size(); i++) {
+		DaaTPtr ptri = this.daatPtrs.get(i);
+		//int ptrID = ptrsIDs.get(i);
+		
+		if (!ptri.scoreList.scores.isEmpty()) {
+		  
+		  if (ptri.nextDoc != Integer.MAX_VALUE && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
+		    ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));
+			ptri.nextDoc ++;
+		  }
+		  else {
+			if (this.args.get(i) instanceof QryopSlScore) {
+			  ptrsScores.add(((QryopSlScore)(this.args.get(i))).getDefaultScore(
+					  r, nextDocid));
+			}
+			else if (this.args.get(i) instanceof QryopSlAnd) {
+				  ptrsScores.add(((QryopSlAnd)(this.args.get(i))).getDefaultScore(
+						  r, nextDocid));
+			}
+			else {
+				  ptrsScores.add(((QryopSlOr)(this.args.get(i))).getDefaultScore(
+						  r, nextDocid));
+			}
+		  }
+		}
+      }
+      
+      
+      // add score to result     
+      if (ptrsScores.size() != this.daatPtrs.size()) {
+    	System.err.println("Not enough ptrsScores");
+      }
+      else {
+    	for (int i = 0; i < ptrsScores.size(); i ++) {
+    	  docScore *= ptrsScores.get(i);
+    	}
+    	result.docScores.add (nextDocid, docScore);
+      }
+
+      //  If a DaatPtr has reached the end of its list, remove it.
+      //  The loop is backwards so that removing an arg does not
+      //  interfere with iteration.
+
+      for (int i=this.daatPtrs.size()-1; i>=0; i--) {
+		DaaTPtr ptri = this.daatPtrs.get(i);
+	
+		if (ptri.nextDoc >= ptri.scoreList.scores.size()) {
+	      ptri.nextDoc = Integer.MAX_VALUE;
+	      ptrsCount --;
+		  //this.daatPtrs.remove (i);
+		  //ptrsIDs.remove(i);
+		}
+      }
+    }
+
+    freeDaaTPtrs();
+
+    return result;
+  }
+
 
   /*
    *  Calculate the default score for the specified document if it
@@ -151,9 +253,48 @@ public class QryopSlAnd extends QryopSl {
 
     if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean)
       return (0.0);
+    if (r instanceof RetrievalModelIndri) {
+      double product = 1.0;
+      for (int i = 0; i < this.args.size(); i ++) {
+		if (this.args.get(i) instanceof QryopSlScore) {
+		  product *= ((QryopSlScore)(this.args.get(i))).getDefaultScore(
+				  r, (int)docid);
+		}
+		else if (this.args.get(i) instanceof QryopSlAnd) {
+		  product *= ((QryopSlAnd)(this.args.get(i))).getDefaultScore(
+					  r, (int)docid);
+		}
+		else {
+		  product *= ((QryopSlOr)(this.args.get(i))).getDefaultScore(
+					  r, (int)docid);
+		}
+      }
+      return product;
+    }
 
     return 0.0;
   }
+  
+  
+  /**
+   *  Return the smallest unexamined docid from the DaaTPtrs.
+   *  @return The smallest internal document id.
+   */
+  public int getSmallestCurrentDocid () {
+
+    int nextDocid = Integer.MAX_VALUE;
+
+    for (int i=0; i<this.daatPtrs.size(); i++) {
+      DaaTPtr ptri = this.daatPtrs.get(i);
+      if (!ptri.scoreList.scores.isEmpty() && 
+    		  ptri.nextDoc < Integer.MAX_VALUE && nextDocid > ptri.scoreList.getDocid (ptri.nextDoc))
+	    nextDocid = ptri.scoreList.getDocid (ptri.nextDoc);
+      }
+
+    return (nextDocid);
+  }
+  
+  
 
   /*
    *  Return a string version of this query operator.  

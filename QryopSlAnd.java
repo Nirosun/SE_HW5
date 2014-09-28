@@ -216,7 +216,7 @@ public class QryopSlAnd extends QryopSl {
       }
       else {
     	for (int i = 0; i < ptrsScores.size(); i ++) {
-    	  docScore *= ptrsScores.get(i);
+    	  docScore *= Math.pow(ptrsScores.get(i), 1/(double)this.daatPtrs.size());
     	}
     	result.docScores.add (nextDocid, docScore);
       }
@@ -259,18 +259,15 @@ public class QryopSlAnd extends QryopSl {
       return (0.0);
     if (r instanceof RetrievalModelIndri) {
       double product = 1.0;
+      
       for (int i = 0; i < this.args.size(); i ++) {
 		if (this.args.get(i) instanceof QryopSlScore) {
-		  product *= ((QryopSlScore)(this.args.get(i))).getDefaultScore(
-				  r, (int)docid);
+		  product *= Math.pow(((QryopSlScore)(this.args.get(i))).getDefaultScore(
+				  r, (int)docid), 1/(double)this.args.size());
 		}
-		else if (this.args.get(i) instanceof QryopSlAnd) {
-		  product *= ((QryopSlAnd)(this.args.get(i))).getDefaultScore(
-					  r, (int)docid);
-		}
-		else {
-		  product *= ((QryopSlOr)(this.args.get(i))).getDefaultScore(
-					  r, (int)docid);
+		else /*(this.args.get(i) instanceof QryopSlAnd)*/ {
+		  product *= Math.pow(((QryopSlAnd)(this.args.get(i))).getDefaultScore(
+					  r, (int)docid), 1/(double)this.args.size());
 		}
       }
       return product;

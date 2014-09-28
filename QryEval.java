@@ -152,7 +152,7 @@ public class QryEval {
      *  parse it, and form the query tree automatically.
      */
     
-    //System.out.println(getInternalDocid("clueweb09-en0000-99-20299"));
+    //System.out.println(getInternalDocid("clueweb09-enwp03-57-00556"));
     
     Qryop qTree;
     String[] query = new String[2];
@@ -166,7 +166,7 @@ public class QryEval {
     while((tmp = br.readLine()) != null) {
       query = tmp.split(":");
       qTree = parseQuery (query[1], model);
-      System.out.println(query[0] + " " + query[1]);
+      System.out.println(query[0] + ":" + query[1]);
       QryResult result = qTree.evaluate (model);
       //printResults (query[1], result);
       //System.out.println("Before sort");

@@ -69,7 +69,7 @@ public class QryopIlSyn extends QryopIl {
       for (int i=0; i<this.daatPtrs.size(); i++) {
 	DaaTPtr ptri = this.daatPtrs.get(i);
 
-	if (ptri.invList.getDocid (ptri.nextDoc) == nextDocid) {
+	if (!ptri.invList.postings.isEmpty() && ptri.invList.getDocid (ptri.nextDoc) == nextDocid) {
 	  positions.addAll (ptri.invList.postings.get(ptri.nextDoc).positions);
 	  ptri.nextDoc ++;
 	}
@@ -106,7 +106,7 @@ public class QryopIlSyn extends QryopIl {
 
     for (int i=0; i<this.daatPtrs.size(); i++) {
       DaaTPtr ptri = this.daatPtrs.get(i);
-      if (nextDocid > ptri.invList.getDocid (ptri.nextDoc))
+      if (!ptri.invList.postings.isEmpty() && nextDocid > ptri.invList.getDocid (ptri.nextDoc))
 	nextDocid = ptri.invList.getDocid (ptri.nextDoc);
       }
 
@@ -123,9 +123,9 @@ public class QryopIlSyn extends QryopIl {
 
     for (int i=0; i<this.args.size(); i++) {
 
-      /*if (! (this.args.get(i) instanceof QryopIl)) 
+      if (! (this.args.get(i) instanceof QryopIl)) 
 	QryEval.fatalError ("Error:  Invalid argument in " +
-			    this.toString());*/
+			    this.toString());
     //  else
 	if ((i>0) &&
 	    (! ptrs.get(i).invList.field.equals (ptrs.get(0).invList.field)))

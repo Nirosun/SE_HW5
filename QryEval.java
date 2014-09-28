@@ -256,7 +256,8 @@ public class QryEval {
     qString = qString.trim();
 
 
-    if (qString.charAt(0) != '#' || !qString.endsWith(")")) {
+    if (qString.charAt(0) != '#' || !qString.endsWith(")") 
+    		|| qString.startsWith("#NEAR/") || qString.startsWith("#near/")) {
       if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean) {
         qString = "#or(" + qString + ")";
       }

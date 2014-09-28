@@ -174,6 +174,8 @@ public class QryopSlAnd extends QryopSl {
     //  This implementation is intended to be clear.  A more efficient
     //  implementation would combine loops and use merge-sort.
 
+    //System.out.println("Before while");
+    
     while (ptrsCount > 0) {
 
       int nextDocid = getSmallestCurrentDocid ();
@@ -234,6 +236,8 @@ public class QryopSlAnd extends QryopSl {
 		}
       }
     }
+    
+    //System.out.println("After while");
 
     freeDaaTPtrs();
 

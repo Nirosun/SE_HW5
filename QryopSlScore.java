@@ -15,6 +15,18 @@ public class QryopSlScore extends QryopSl {
   
   public int ctf;
   public String field;
+  private static DocLengthStore dls ;
+  
+  static {
+    try {
+      //x = new MyFileWriter("foo.txt"); 
+      dls= new DocLengthStore(QryEval.READER);
+    } catch (Exception e) {
+      //logging_and _stuff_you_might_want_to_terminate_the_app_here_blah();
+    	System.err.println("Error: Can't set up DocLengthStore in QryopScore.");
+        System.exit(1);
+    } 
+  }
 
   /**
    *  Construct a new SCORE operator.  The SCORE operator accepts just
@@ -118,7 +130,7 @@ public class QryopSlScore extends QryopSl {
     
     int N = QryEval.READER.getDocCount(result.invertedList.field);
     double avg_doclen = QryEval.READER.getSumTotalTermFreq(result.invertedList.field) / (double)N;
-    DocLengthStore dls = new DocLengthStore(QryEval.READER);
+    //DocLengthStore dls = new DocLengthStore(QryEval.READER);
     int df = result.invertedList.df;
     double idf = Math.log((N - df + 0.5) / (df + 0.5));
     
@@ -144,8 +156,8 @@ public class QryopSlScore extends QryopSl {
 
     // The SCORE operator should not return a populated inverted list.
     // If there is one, replace it with an empty inverted list.
-    //if (result.invertedList.df > 0)
-	  //result.invertedList = new InvList();
+    if (result.invertedList.df > 0)
+	  result.invertedList = new InvList();
 
     return result;
   }  
@@ -165,7 +177,7 @@ public class QryopSlScore extends QryopSl {
     long lengthC = QryEval.READER.getSumTotalTermFreq(result.invertedList.field);
     int ctf = result.invertedList.ctf;
     double p_qi_C = ctf / (double) lengthC;
-    DocLengthStore dls = new DocLengthStore(QryEval.READER);
+    //DocLengthStore dls = new DocLengthStore(QryEval.READER);
     
     this.ctf = result.invertedList.ctf;
     this.field = result.invertedList.field;
@@ -188,8 +200,8 @@ public class QryopSlScore extends QryopSl {
 
     // The SCORE operator should not return a populated inverted list.
     // If there is one, replace it with an empty inverted list.
-    //if (result.invertedList.df > 0)
-	  //result.invertedList = new InvList();
+    if (result.invertedList.df > 0)
+	  result.invertedList = new InvList();
 
     return result;
   }  
@@ -213,7 +225,7 @@ public class QryopSlScore extends QryopSl {
       long lengthC = QryEval.READER.getSumTotalTermFreq(this.field);
       double p_qi_C = this.ctf / (double) lengthC;
     	
-      DocLengthStore dls = new DocLengthStore(QryEval.READER);
+      //DocLengthStore dls = new DocLengthStore(QryEval.READER);
       long length_d = dls.getDocLength(this.field, (int)docid);
       int tf = 0;
       double p_qi_d = (tf + ((RetrievalModelIndri)r).mu * p_qi_C) /

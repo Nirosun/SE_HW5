@@ -169,6 +169,7 @@ public class QryEval {
       System.out.println(query[0] + " " + query[1]);
       QryResult result = qTree.evaluate (model);
       //printResults (query[1], result);
+      //System.out.println("Before sort");
       outputResults(bw, query[0], result, nDoc, model);
     }
     br.close();
@@ -267,7 +268,7 @@ public class QryEval {
       }
     }
     
-    System.out.println(qString);
+    //System.out.println(qString);
 
     // Tokenize the query.
 
@@ -295,16 +296,16 @@ public class QryEval {
         currentOp = new QryopSlSum();
         stack.push(currentOp);
       } else if (token.equalsIgnoreCase("#syn")) {
-        currentOp = new QryopSlScore();  //wrap by score operator
-        stack.push(currentOp);
+        //currentOp = new QryopSlScore();  //wrap by score operator
+        //stack.push(currentOp);
     	currentOp = new QryopIlSyn();
         stack.push(currentOp);
       } else if (token.startsWith("#NEAR/") || token.startsWith("#near/")) {
     	int num = 0;
     	String[] strs = token.split("/");
         num = Integer.parseInt(strs[1]);
-        currentOp = new QryopSlScore();  //wrap by score operator
-        stack.push(currentOp);
+        //currentOp = new QryopSlScore();  //wrap by score operator
+        //stack.push(currentOp);
     	currentOp = new QryopIlNear(num);
     	stack.push(currentOp);
     	
@@ -324,14 +325,14 @@ public class QryEval {
         currentOp = stack.peek();
         currentOp.add(arg);
         
-        if (currentOp instanceof QryopSlScore) {
+        /*if (currentOp instanceof QryopSlScore) {
           stack.pop();
           if (stack.empty())
         	  break;
           Qryop tmp = currentOp;
           currentOp = stack.peek();
           currentOp.add(tmp);
-        }
+        }*/
         
       } else {
 

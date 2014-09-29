@@ -1,4 +1,4 @@
 queryFilePath=QueriesStruc.txt
-indexPath=../index_full
+indexPath=../../index_full
 trecEvalOutputPath=Struc-Ranked.trec
 retrievalAlgorithm=RankedBoolean

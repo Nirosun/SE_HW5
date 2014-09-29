@@ -98,8 +98,7 @@ public class QryopSlSum extends QryopSl {
 			ptri.nextDoc ++;
 		  }
 		}
-      }
-      
+      }      
       
       // add score to result 
       if (docScore != 0) {
@@ -107,7 +106,7 @@ public class QryopSlSum extends QryopSl {
       }
       
 
-      //  If a DaatPtr has reached the end of its list, remove it.
+      //  If a DaatPtr has reached the end of its list, decrease the ptrsCount.
       //  The loop is backwards so that removing an arg does not
       //  interfere with iteration.
 
@@ -130,93 +129,6 @@ public class QryopSlSum extends QryopSl {
     return result;
   }
   
-  
-  
-  /**
-   *  Evaluates the query operator for BM25 retrieval model,
-   *  including any child operators and returns the result.
-   *  @param r A retrieval model that controls how the operator behaves.
-   *  @return The result of evaluating the query.
-   *  @throws IOException
-   */
-  public QryResult evaluateBM25_old (RetrievalModelBM25 r) throws IOException {
-
-    //  Initialization
-
-    allocDaaTPtrs (r);
-    QryResult result = new QryResult ();
-    int qtf = 1;
-
-    //this.daatPtrs.get(0).invList.print();
-    
-    
-    //  Sort the arguments so that the shortest lists are first.  This
-    //  improves the efficiency of exact-match AND without changing
-    //  the result.
-
-    for (int i=0; i<(this.daatPtrs.size()-1); i++) {
-      for (int j=i+1; j<this.daatPtrs.size(); j++) {
-	if (this.daatPtrs.get(i).scoreList.scores.size() >
-	    this.daatPtrs.get(j).scoreList.scores.size()) {
-	    ScoreList tmpScoreList = this.daatPtrs.get(i).scoreList;
-	    this.daatPtrs.get(i).scoreList = this.daatPtrs.get(j).scoreList;
-	    this.daatPtrs.get(j).scoreList = tmpScoreList;
-	}
-      }
-    }
-
-    //  Exact-match AND requires that ALL scoreLists contain a
-    //  document id.  Use the first (shortest) list to control the
-    //  search for matches.
-
-    //  Named loops are a little ugly.  However, they make it easy
-    //  to terminate an outer loop from within an inner loop.
-    //  Otherwise it is necessary to use flags, which is also ugly.
-
-    DaaTPtr ptr0 = this.daatPtrs.get(0);
-
-    EVALUATEDOCUMENTS:
-    for ( ; ptr0.nextDoc < ptr0.scoreList.scores.size(); ptr0.nextDoc ++) {
-
-      int ptr0Docid = ptr0.scoreList.getDocid (ptr0.nextDoc);
-      double docScore = 0.0;
-      List<Double> ptrsScores = new ArrayList<Double>();
-      ptrsScores.add(ptr0.scoreList.getDocidScore(ptr0.nextDoc));
-
-      //  Do the other query arguments have the ptr0Docid?
-
-      for (int j=1; j<this.daatPtrs.size(); j++) {
-
-		DaaTPtr ptrj = this.daatPtrs.get(j);
-	
-		while (true) {
-		  if (ptrj.nextDoc >= ptrj.scoreList.scores.size())
-		    break EVALUATEDOCUMENTS;		// No more docs can match
-		  else
-		    if (ptrj.scoreList.getDocid (ptrj.nextDoc) > ptr0Docid)
-		      continue EVALUATEDOCUMENTS;	// The ptr0docid can't match.
-		  else
-		    if (ptrj.scoreList.getDocid (ptrj.nextDoc) < ptr0Docid)
-		      ptrj.nextDoc ++;			// Not yet at the right doc.
-		  else {
-			  ptrsScores.add(ptrj.scoreList.getDocidScore(ptrj.nextDoc));
-			  break;				// ptrj matches ptr0Docid
-		  }
-		}
-      }
-
-      //  The ptr0Docid matched all query arguments, so save it.
-      for (int i = 0; i < ptrsScores.size(); i ++) {
-        docScore += ptrsScores.get(i) * (r.k_3 + 1) * qtf / (double)(r.k_3 + qtf);
-      }
-      
-      result.docScores.add (ptr0Docid, docScore);
-    }
-
-    freeDaaTPtrs ();
-
-    return result;
-  }
 
   /*
    *  Calculate the default score for the specified document if it

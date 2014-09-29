@@ -13,9 +13,9 @@ import java.util.*;
 
 public class QryopSlScore extends QryopSl {
   
-  public int ctf;
-  public String field;
-  private static DocLengthStore dls ;
+  public int ctf;		// Indri needs this
+  public String field;	// Indri needs this
+  private static DocLengthStore dls;
   
   static {
     try {
@@ -134,9 +134,6 @@ public class QryopSlScore extends QryopSl {
     int df = result.invertedList.df;
     double idf = Math.log((N - df + 0.5) / (df + 0.5));
     
-    // do you need it???
-    //this.ctf = result.invertedList.ctf;
-    //this.field = result.invertedList.field;
 
     // Each pass of the loop computes a score for one document. Note:
     // If the evaluate operation above returned a score list (which is

@@ -163,7 +163,7 @@ public class QryopSlAnd extends QryopSl {
     /*for (int i = 0; i < this.daatPtrs.size(); i ++) {
       ptrsIDs.add(i);
     }*/
-    int ptrsCount = this.daatPtrs.size();
+    int ptrsCount = this.daatPtrs.size();	// count the number of active ptrs 
 
     QryResult result = new QryResult ();
 
@@ -192,7 +192,7 @@ public class QryopSlAnd extends QryopSl {
 		    ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));
 			ptri.nextDoc ++;
 		  }
-		  else {
+		  else {	// get default score
 			if (this.args.get(i) instanceof QryopSlScore) {
 			  ptrsScores.add(((QryopSlScore)(this.args.get(i))).getDefaultScore(
 					  r, nextDocid));
@@ -221,7 +221,7 @@ public class QryopSlAnd extends QryopSl {
     	result.docScores.add (nextDocid, docScore);
       }
 
-      //  If a DaatPtr has reached the end of its list, remove it.
+      //  If a DaatPtr has reached the end of its list, decrease the ptrsCount.
       //  The loop is backwards so that removing an arg does not
       //  interfere with iteration.
 

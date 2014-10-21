@@ -1,7 +1,7 @@
-queryFilePath=queriesBOW.txt
+queryFilePath=Sample.qry
 indexPath=../../index_full
-trecEvalOutputPath=Indri-BOW.trec
+trecEvalOutputPath=Sample.trec
 retrievalAlgorithm=Indri
-Indri:mu=2500
+Indri:mu=2500 
 Indri:lambda=0.4
 

@@ -1,1 +1,1 @@
-14:uplift at #AND(yellowstone.title national.body park.body)
+26:#WAND(0.65 #AND(#WSUM(0.1 lower.url 0.2 lower.title 0.3 lower.inlink 0.4 lower.body) #WSUM(0.1 heart.url 0.2 heart.title 0.3 heart.inlink 0.4 heart.body) #WSUM(0.1 rate.url 0.2 rate.title 0.3 rate.inlink 0.4 rate.body)) 0.35 #WAND(0.5 #AND(lower heart rate) 0.3 #AND(#NEAR/1(lower heart) #NEAR/1(heart rate)) 0.2 #AND(#WINDOW/8(lower heart) #WINDOW/8(heart rate))))

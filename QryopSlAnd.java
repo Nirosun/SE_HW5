@@ -201,9 +201,21 @@ public class QryopSlAnd extends QryopSl {
 				  ptrsScores.add(((QryopSlAnd)(this.args.get(i))).getDefaultScore(
 						  r, nextDocid));
 			}
-			else {
+			else if (this.args.get(i) instanceof QryopSlOr){
 				  ptrsScores.add(((QryopSlOr)(this.args.get(i))).getDefaultScore(
 						  r, nextDocid));
+			}
+			else if (this.args.get(i) instanceof QryopSlWAnd){
+				  ptrsScores.add(((QryopSlWAnd)(this.args.get(i))).getDefaultScore(
+						  r, nextDocid));
+			}
+			else if (this.args.get(i) instanceof QryopSlWSum){
+				  ptrsScores.add(((QryopSlWSum)(this.args.get(i))).getDefaultScore(
+						  r, nextDocid));
+			}
+			else {
+				System.out.println("Error: default score not implemented in this operator");
+				break;
 			}
 		  }
 		}
@@ -265,9 +277,25 @@ public class QryopSlAnd extends QryopSl {
 		  product *= Math.pow(((QryopSlScore)(this.args.get(i))).getDefaultScore(
 				  r, (int)docid), 1/(double)this.args.size());
 		}
-		else /*(this.args.get(i) instanceof QryopSlAnd)*/ {
+  		else if (this.args.get(i) instanceof QryopSlAnd) {
 		  product *= Math.pow(((QryopSlAnd)(this.args.get(i))).getDefaultScore(
+				  r, (int)docid), 1/(double)this.args.size());
+		}
+  		else if (this.args.get(i) instanceof QryopSlOr) {
+		  product *= Math.pow(((QryopSlOr)(this.args.get(i))).getDefaultScore(
+				  r, (int)docid), 1/(double)this.args.size());
+		}
+		else if (this.args.get(i) instanceof QryopSlWSum) {
+		  product *= Math.pow(((QryopSlWSum)(this.args.get(i))).getDefaultScore(
 					  r, (int)docid), 1/(double)this.args.size());
+		}
+		else if (this.args.get(i) instanceof QryopSlWAnd) {
+		  product *= Math.pow(((QryopSlWAnd)(this.args.get(i))).getDefaultScore(
+					  r, (int)docid), 1/(double)this.args.size());
+		}
+		else {
+		  System.out.println("Error: default score not implemented in this operator");
+		  break;
 		}
       }
       return product;

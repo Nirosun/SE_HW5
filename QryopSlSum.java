@@ -57,6 +57,7 @@ public class QryopSlSum extends QryopSl {
    */
   public QryResult evaluateBM25 (RetrievalModelBM25 r) throws IOException {
     //  Initialization
+	  
 
     allocDaaTPtrs (r);
     int qtf = 1;
@@ -84,6 +85,11 @@ public class QryopSlSum extends QryopSl {
       int nextDocid = getSmallestCurrentDocid ();
       double docScore = 0.0;
       //List<Double> ptrsScores = new ArrayList<Double>();  // scores of the ptri's with nextDocid 
+      
+      /*if (nextDocid == 405258) {
+        System.out.println("oh");
+      }*/
+      
 
       for (int i=0; i<this.daatPtrs.size(); i++) {
 		DaaTPtr ptri = this.daatPtrs.get(i);
@@ -176,7 +182,7 @@ public class QryopSlSum extends QryopSl {
     for (int i=0; i<this.args.size(); i++)
       result += this.args.get(i).toString() + " ";
 
-    return ("#AND( " + result + ")");
+    return ("#SUM( " + result + ")");
   }
   
 }

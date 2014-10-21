@@ -152,7 +152,7 @@ public class QryEval {
      *  parse it, and form the query tree automatically.
      */
     
-    //System.out.println(getInternalDocid("clueweb09-enwp03-57-00556"));
+    //System.out.println(getInternalDocid("clueweb09-en0005-66-26526"));
     
     Qryop qTree;
     String[] query = new String[2];
@@ -258,6 +258,7 @@ public class QryEval {
 
     if (qString.charAt(0) != '#' || !qString.endsWith(")") ||
     		qString.startsWith("#NEAR/") || qString.startsWith("#near/") || 
+    		qString.startsWith("#WINDOW/") || qString.startsWith("#window/") || 
     		qString.startsWith("#SYN") || qString.startsWith("#syn")) {
       if (r instanceof RetrievalModelUnrankedBoolean || r instanceof RetrievalModelRankedBoolean) {
         qString = "#or(" + qString + ")";
@@ -291,11 +292,17 @@ public class QryEval {
       } else if (token.equalsIgnoreCase("#and")) {
         currentOp = new QryopSlAnd();
         stack.push(currentOp);
+      } else if (token.equalsIgnoreCase("#wand")) {
+        currentOp = new QryopSlWAnd();
+        stack.push(currentOp);
       } else if (token.equalsIgnoreCase("#or")) {
         currentOp = new QryopSlOr();
         stack.push(currentOp);
       } else if (token.equalsIgnoreCase("#sum")) {
         currentOp = new QryopSlSum();
+        stack.push(currentOp);
+      } else if (token.equalsIgnoreCase("#wsum")) {
+        currentOp = new QryopSlWSum();
         stack.push(currentOp);
       } else if (token.equalsIgnoreCase("#syn")) {
         //currentOp = new QryopSlScore();  //wrap by score operator
@@ -306,13 +313,16 @@ public class QryEval {
     	int num = 0;
     	String[] strs = token.split("/");
         num = Integer.parseInt(strs[1]);
-        //currentOp = new QryopSlScore();  //wrap by score operator
-        //stack.push(currentOp);
     	currentOp = new QryopIlNear(num);
-    	stack.push(currentOp);
-    	
-      }
-    	else if (token.startsWith(")")) { // Finish current query operator.
+    	stack.push(currentOp);   	
+      } else if (token.startsWith("#WINDOW/") || token.startsWith("#window/")) {
+      	int num = 0;
+      	String[] strs = token.split("/");
+          num = Integer.parseInt(strs[1]);
+      	currentOp = new QryopIlWindow(num);
+      	stack.push(currentOp);   
+      	
+      } else if (token.startsWith(")")) { // Finish current query operator.
         // If the current query operator is not an argument to
         // another query operator (i.e., the stack is empty when it
         // is removed), we're done (assuming correct syntax - see
@@ -327,27 +337,26 @@ public class QryEval {
         currentOp = stack.peek();
         currentOp.add(arg);
         
-        /*if (currentOp instanceof QryopSlScore) {
-          stack.pop();
-          if (stack.empty())
-        	  break;
-          Qryop tmp = currentOp;
-          currentOp = stack.peek();
-          currentOp.add(tmp);
-        }*/
-        
       } else {
-
+    	//System.out.println("before tokenize: " + token);
+    	  
         // NOTE: You should do lexical processing of the token before
         // creating the query term, and you should check to see whether
-        // the token specifies a particular field (e.g., apple.title).
+        // the token specifies a particular field (e.g., apple.title).    	
+    	
     	if (tokenizeQuery(token).length != 0) {
-          token = tokenizeQuery(token)[0];
-          if (token.contains(".")) {    // get the field
-        	String[] termStrs = token.split("\\.");
-        	token = tokenizeQuery(termStrs[0])[0];
-        	currentOp.add(new QryopIlTerm(token, termStrs[1]));
+    	  if (token.contains(".")) {
+    		String[] termStrs = token.split("\\.");
+    		if (termStrs[1].charAt(0) >= '0' && termStrs[1].charAt(0) <= '9') {
+    		  currentOp.add(new QryopIlTerm(token));
+    		  //System.out.println(token);
+    		} else {
+    		  token = tokenizeQuery(termStrs[0])[0];
+        	  currentOp.add(new QryopIlTerm(token, termStrs[1]));
+        	//System.out.println(termStrs[0] + " " + termStrs[1]);
+    		}
           } else {
+        	token = tokenizeQuery(token)[0];
             currentOp.add(new QryopIlTerm(token));
           }
     	}
@@ -452,7 +461,13 @@ public class QryEval {
    */
   static void outputResults(BufferedWriter writer, String queryID, QryResult result, int nDoc, RetrievalModel r) throws IOException {
     
-    int s = result.docScores.scores.size();
+    if(result == null) {
+    	writer.write(queryID + " Q0 dummy 1 0 run-1");
+        writer.newLine();
+        return;
+    }
+	  
+	int s = result.docScores.scores.size();
 
     if (s < 1) {
       writer.write(queryID + " Q0 dummy 1 0 run-1");

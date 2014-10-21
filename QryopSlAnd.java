@@ -155,6 +155,7 @@ public class QryopSlAnd extends QryopSl {
   public QryResult evaluateIndri(RetrievalModelIndri r) throws IOException {
 
     //  Initialization
+	  
 
     allocDaaTPtrs (r);
     //syntaxCheckArgResults (this.daatPtrs);
@@ -163,6 +164,15 @@ public class QryopSlAnd extends QryopSl {
     /*for (int i = 0; i < this.daatPtrs.size(); i ++) {
       ptrsIDs.add(i);
     }*/
+    
+    for (int i = 0 ; i < this.daatPtrs.size(); i ++) {
+      if (this.args.get(i) instanceof QryopSlWSum && this.args.get(i).args.isEmpty()) {
+        this.args.remove(i);
+        this.daatPtrs.remove(i);
+      }
+    }
+
+    
     int ptrsCount = this.daatPtrs.size();	// count the number of active ptrs 
 
     QryResult result = new QryResult ();

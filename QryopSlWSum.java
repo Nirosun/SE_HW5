@@ -77,7 +77,8 @@ public class QryopSlWSum extends QryopSl {
   public QryResult evaluateIndri(RetrievalModelIndri r) throws IOException {
 
 	if (weights.size() != args.size()) {
-		System.out.println("Error: weights do not match args.");
+		//System.err.println("Error: weights do not match args.");
+		weights.remove(weights.size() - 1);
 	}
 	
 	// weights normalization
@@ -98,9 +99,22 @@ public class QryopSlWSum extends QryopSl {
     /*for (int i = 0; i < this.daatPtrs.size(); i ++) {
       ptrsIDs.add(i);
     }*/
+    
+    for (int i = 0 ; i < this.daatPtrs.size(); i ++) {
+        if (this.args.get(i) instanceof QryopSlWSum && this.args.get(i).args.isEmpty()) {
+          this.args.remove(i);
+          this.daatPtrs.remove(i);
+        }
+    }
+    
     int ptrsCount = this.daatPtrs.size();	// count the number of active ptrs 
 
     QryResult result = new QryResult ();
+    
+    if (ptrsCount == 0) {
+        freeDaaTPtrs();
+        return result;
+    }
 
     //  Each pass of the loop adds 1 document to result until all of
     //  the score lists are depleted.  When a list is depleted, it

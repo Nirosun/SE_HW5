@@ -1,4 +1,0 @@
-queryFilePath=queriesOr.txt
-indexPath=../index_full
-trecEvalOutputPath=BOW-OR-Ranked.trec
-retrievalAlgorithm=RankedBoolean

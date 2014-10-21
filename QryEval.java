@@ -351,8 +351,10 @@ public class QryEval {
     		  currentOp.add(new QryopIlTerm(token));
     		  //System.out.println(token);
     		} else {
-    		  token = tokenizeQuery(termStrs[0])[0];
-        	  currentOp.add(new QryopIlTerm(token, termStrs[1]));
+    		  if (tokenizeQuery(termStrs[0]).length != 0) {
+    		    token = tokenizeQuery(termStrs[0])[0];
+    		    currentOp.add(new QryopIlTerm(token, termStrs[1]));
+    		  }
         	//System.out.println(termStrs[0] + " " + termStrs[1]);
     		}
           } else {

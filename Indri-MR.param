@@ -1,6 +1,0 @@
-queryFilePath=queriesMR.txt
-indexPath=../../index_full
-trecEvalOutputPath=Indri-MR.trec
-retrievalAlgorithm=Indri
-Indri:mu=2500
-Indri:lambda=0.4

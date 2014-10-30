@@ -170,6 +170,8 @@ public class QryopIlNear extends QryopIl {
         //System.out.println("Find: " + ptr0Docid);        
       }
     }
+    
+   
 
     freeDaaTPtrs ();
 

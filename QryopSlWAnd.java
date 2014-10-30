@@ -78,7 +78,7 @@ public class QryopSlWAnd extends QryopSl {
   public QryResult evaluateIndri(RetrievalModelIndri r) throws IOException {
 
 	if (weights.size() != args.size()) {
-		System.out.println("Error: weights do not match args.");
+		System.err.println("Error: weights do not match args.");
 	}
 
 	// weights normalization
@@ -101,7 +101,11 @@ public class QryopSlWAnd extends QryopSl {
     }*/
     
     for (int i = 0 ; i < this.daatPtrs.size(); i ++) {
-        if (this.args.get(i) instanceof QryopSlWSum && this.args.get(i).args.isEmpty()) {
+        /*if (this.args.get(i) instanceof QryopSlWSum && this.args.get(i).args.isEmpty()) {
+          this.args.remove(i);
+          this.daatPtrs.remove(i);
+        }*/
+        if (this.daatPtrs.get(i).scoreList.scores.isEmpty()) { // get rid of empty inverted lists
           this.args.remove(i);
           this.daatPtrs.remove(i);
         }
@@ -130,9 +134,13 @@ public class QryopSlWAnd extends QryopSl {
 		DaaTPtr ptri = this.daatPtrs.get(i);
 		//int ptrID = ptrsIDs.get(i);
 		
-		if (!ptri.scoreList.scores.isEmpty()) {
+		/*if (ptri.scoreList.scores.isEmpty()) {
+		  ptri.nextDoc = Integer.MAX_VALUE;
+		}*/
+		
+		if (true/*!ptri.scoreList.scores.isEmpty()*/) {
 		  
-		  if (ptri.nextDoc != Integer.MAX_VALUE && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
+		  if (/*!ptri.scoreList.scores.isEmpty() && */ptri.nextDoc != Integer.MAX_VALUE && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
 		    ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));
 			ptri.nextDoc ++;
 		  }
@@ -168,7 +176,7 @@ public class QryopSlWAnd extends QryopSl {
       
       // add score to result     
       if (ptrsScores.size() != this.daatPtrs.size()) {
-    	System.err.println("Not enough ptrsScores");
+    	System.err.println("#WAND: Not enough ptrsScores for doc " + nextDocid);
       }
       else {
     	for (int i = 0; i < ptrsScores.size(); i ++) {

@@ -105,6 +105,10 @@ public class QryopSlWSum extends QryopSl {
           this.args.remove(i);
           this.daatPtrs.remove(i);
         }
+        else if (this.daatPtrs.get(i).scoreList.scores.isEmpty()) { // get rid of empty inverted lists
+          this.args.remove(i);
+          this.daatPtrs.remove(i);
+        }
     }
     
     int ptrsCount = this.daatPtrs.size();	// count the number of active ptrs 
@@ -135,7 +139,7 @@ public class QryopSlWSum extends QryopSl {
 		DaaTPtr ptri = this.daatPtrs.get(i);
 		//int ptrID = ptrsIDs.get(i);
 		
-		if (!ptri.scoreList.scores.isEmpty()) {
+		if (true/*!ptri.scoreList.scores.isEmpty()*/) {
 		  
 		  if (ptri.nextDoc != Integer.MAX_VALUE && ptri.scoreList.getDocid (ptri.nextDoc) == nextDocid) {
 		    ptrsScores.add(ptri.scoreList.getDocidScore (ptri.nextDoc));

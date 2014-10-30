@@ -333,9 +333,13 @@ public class QryEval {
         stack.pop();
         if (stack.empty())
           break;
-        Qryop arg = currentOp;
+        Qryop arg = currentOp;       
         currentOp = stack.peek();
-        currentOp.add(arg);
+        
+        // discard null #WSum
+        if (!(arg instanceof QryopSlWSum && arg.args.isEmpty())) {
+            currentOp.add(arg);
+        }      
         
       } else {
     	//System.out.println("before tokenize: " + token);

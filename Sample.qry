@@ -1,1 +1,1 @@
-71:#AND(#WSUM(0.05 living.url 0.1 living.keywords 0.15 living.title 0.3 living.inlink 0.4 living.body) #WSUM(0.05 in.url 0.1 in.keywords 0.15 in.title 0.3 in.inlink 0.4 in.body) #WSUM(0.05 india.url 0.1 india.keywords 0.15 india.title 0.3 india.inlink 0.4 india.body))
+71:#AND(#WSUM(0.05 living.url 0.25 living.keywords 0.25 living.title 0.40 living.inlink 0.00 living.body) #WSUM(0.05 in.url 0.25 in.keywords 0.25 in.title 0.40 in.inlink 0.00 in.body) #WSUM(0.05 india.url 0.25 india.keywords 0.25 india.title 0.40 india.inlink 0.00 india.body))

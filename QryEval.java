@@ -227,15 +227,14 @@ public class QryEval {
         bwTmp.close(); */
     	
 	    Qryop qTreeTmp;
-        String tmp = null;
         int nDoc = 100;
         rankingFile = new File("tmpRank.txt");
-        BufferedWriter bwTmp = new BufferedWriter(new FileWriter(rankingFile)); 
+        BufferedWriter bwRank = new BufferedWriter(new FileWriter(rankingFile)); 
     	
     	for (Map.Entry<String, String> entry : queriesOrig.entrySet()) {
     	  qTreeTmp = parseQuery (entry.getValue(), model);
     	  QryResult result = qTreeTmp.evaluate (model);
-          outputResults(bwTmp, entry.getKey(), result, nDoc, model);
+          outputResults(bwRank, entry.getKey(), result, nDoc, model);
     	}
         
       }
@@ -329,9 +328,14 @@ public class QryEval {
           }
         }
         
-        bwQuery.write(queryID + ":" + "#wand (");
+        bwQuery.write(queryID + ":" + "#wand(");
+        int j = 0;
         for (Map.Entry<String, Double> entry : termsExpand.entrySet()) {
-          bwQuery.write(entry.getValue() + " " + entry.getKey() + " ");
+          if (j != 0) {
+            bwQuery.write(" ");
+          }
+          j ++;
+          bwQuery.write(entry.getValue() + " " + entry.getKey());
         }
         bwQuery.write(")");
         bwQuery.newLine();       

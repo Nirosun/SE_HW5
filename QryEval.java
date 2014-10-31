@@ -19,6 +19,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 public class QryEval {
@@ -153,23 +154,210 @@ public class QryEval {
      */
     
     //System.out.println(getInternalDocid("clueweb09-en0005-66-26526"));
+    File origQueryFile = new File(params.get("queryFilePath"));
+    HashMap<String, String> queriesOrig = new HashMap<String, String>();
+    
+    BufferedReader brOrig = new BufferedReader(new FileReader(origQueryFile)); 
+    //rankingFile = new File("tmpRank.txt");
+    //BufferedWriter bwTmp = new BufferedWriter(new FileWriter(rankingFile)); 
+    
+    // get original queries
+    //Qryop qTreeTmp;
+    String[] queryOrig = new String[2];
+    String lineOrig = null;
+    //int nDoc = 100;
+    
+    while((lineOrig = brOrig.readLine()) != null) {
+      queryOrig = lineOrig.split(":");
+      //qTreeTmp = parseQuery (queryTmp[1], model);
+      queryOrig[1] = "#and(" + queryOrig[1] + ")";
+      queriesOrig.put(queryOrig[0], queryOrig[1]);
+      //System.out.println(queryTmp[0] + ":" + queryTmp[1]);
+      //QryResult result = qTreeTmp.evaluate (model);
+      //outputResults(bwTmp, queryTmp[0], result, nDoc, model);
+    }
+    brOrig.close();
+    //bwTmp.close(); 
+    
+    
+    
+    File queryFile = null;
+    
+    if (!params.containsKey("fb") || params.get("fb").equalsIgnoreCase("false")) { // don't use fb
+      queryFile = new File(params.get("queryFilePath"));
+    }
+    else {	// do use fb
+      if (!params.containsKey("fbDocs") || !params.containsKey("fbMu") || 
+    		  !params.containsKey("fbTerms") || !params.containsKey("fbOrigWeight") ||
+    		  !params.containsKey("fbExpansionQueryFile")) {
+        System.err.println("Error: missing fb parameters.");
+        System.exit(1);
+      }
+      
+      File rankingFile = null;	// ranking file for expansion
+      
+      // get parameters for fb
+      int fbDocs = Integer.parseInt(params.get("fbDocs"));
+      int fbTerms = Integer.parseInt(params.get("fbTerms"));
+      int fbMu = Integer.parseInt(params.get("fbMu"));
+      double fbOrigWeight = Double.parseDouble(params.get("fbOrigWeight"));      
+      
+      if (params.containsKey("fbInitialRankingFile")) {	// have initial ranking, directly do expansion
+    	rankingFile = new File(params.get("fbInitialRankingFile"));
+      }
+      else {	// no initial ranking, first retrieve initial ranking
+        /*File initQueryFile = new File(params.get("queryFilePath"));
+        BufferedReader brTmp = new BufferedReader(new FileReader(initQueryFile)); 
+        rankingFile = new File("tmpRank.txt");
+        BufferedWriter bwTmp = new BufferedWriter(new FileWriter(rankingFile)); 
+        
+        Qryop qTreeTmp;
+        String[] queryTmp = new String[2];
+        String tmp = null;
+        int nDoc = 100;
+        
+        while((tmp = brTmp.readLine()) != null) {
+          queryTmp = tmp.split(":");
+          qTreeTmp = parseQuery (queryTmp[1], model);
+          System.out.println(queryTmp[0] + ":" + queryTmp[1]);
+          QryResult result = qTreeTmp.evaluate (model);
+          outputResults(bwTmp, queryTmp[0], result, nDoc, model);
+        }
+        brTmp.close();
+        bwTmp.close(); */
+    	
+	    Qryop qTreeTmp;
+        String tmp = null;
+        int nDoc = 100;
+        rankingFile = new File("tmpRank.txt");
+        BufferedWriter bwTmp = new BufferedWriter(new FileWriter(rankingFile)); 
+    	
+    	for (Map.Entry<String, String> entry : queriesOrig.entrySet()) {
+    	  qTreeTmp = parseQuery (entry.getValue(), model);
+    	  QryResult result = qTreeTmp.evaluate (model);
+          outputResults(bwTmp, entry.getKey(), result, nDoc, model);
+    	}
+        
+      }
+      
+      // use initial ranking to do expansion
+
+      queryFile = new File(params.get("fbExpansionQueryFile"));
+      BufferedWriter bwQuery = new BufferedWriter(new FileWriter(queryFile)); 
+      
+      BufferedReader trecReader = new BufferedReader(new FileReader(rankingFile)); 
+      HashMap<String, HashMap<Integer, Double>> allDocs = new HashMap<String, HashMap<Integer, Double>>();
+      String[] singleTrec = new String[6];
+      String tmp = null;
+      String idNow = null;
+      int cnt = 0;
+      
+      // form HashMap <queryID, hashmap of <docID, score>>
+      while ((tmp = trecReader.readLine()) != null) {
+        singleTrec = tmp.split(" ");
+        //String queryID = singleTrec[0];
+        /*if (idNow == null) {
+          idNow = singleTrec[0];
+        }*/
+        if (idNow != singleTrec[0]) {
+          idNow = singleTrec[0];
+          cnt = 0;
+          allDocs.put(idNow, new HashMap<Integer, Double>());
+        }
+        if (cnt < fbDocs) {
+          allDocs.get(idNow).put(getInternalDocid(singleTrec[2]), Double.parseDouble(singleTrec[4]));
+          cnt ++;
+        }       
+      }
+      trecReader.close();
+      
+      // for every query, form the HashMap <term, score> from top n documents
+      for (String queryID : allDocs.keySet()) {
+    	//System.out.println(queryID);
+        HashMap<String, Double> terms = new HashMap<String, Double>();
+        HashMap<Integer, Double> docs = allDocs.get(queryID);
+        for (Integer docID : docs.keySet()) {
+    	  TermVector tv = new TermVector(docID, "body");
+    	  for (int i = 1; i < tv.stems.length; i ++) {
+    	    if (!terms.containsKey(tv.stems[i]) && !tv.stems[i].contains(".") &&
+    	    		!tv.stems[i].contains(",")) {
+    	      terms.put(tv.stems[i], 0.0);
+    	    }
+    	  }   	  
+          //System.out.println(tv.stemString(10)); // get the string for the 10th stem
+          //System.out.println(tv.stemDf(10)); // get its df
+          //System.out.println(tv.totalStemFreq(10)); // get its ctf
+        }
+        
+        // calcuate scores for the possible expansion terms
+        for (String term : terms.keySet()) {
+          for (Integer docID: docs.keySet()) {
+        	TermVector tv = new TermVector(docID, "body");
+        	int stemID = 0;
+        	
+        	for (int i = 1; i < tv.stemsLength(); i ++) {
+        	  if (tv.stems[i].equals(term)) {
+        		stemID = i;
+        	  }        			
+        	}       	
+            double p_t_d = 
+            		(tv.stemFreq(stemID) + fbMu * tv.stemFreq(stemID) / (double)tv.totalStemFreq(stemID)) / 
+            		(double)(tv.positionsLength() + fbMu);
+            terms.put(term, terms.get(term) + p_t_d * docs.get(docID));
+          }
+          long ctf = QryEval.READER.totalTermFreq(new Term("body", new BytesRef(term)));
+          long length_C = QryEval.READER.getSumTotalTermFreq ("body");
+          
+          terms.put(term, terms.get(term) * Math.log(length_C / (double)ctf));         
+        }
+        
+        // extract terms with highest scores
+        TermMapComparator tmc = new TermMapComparator(terms);
+        TreeMap<String,Double> termsSorted = new TreeMap<String,Double>(tmc);
+        TreeMap<String,Double> termsExpand = new TreeMap<String,Double>(tmc);
+        termsSorted.putAll(terms);
+        int i = 0;
+        
+        //for (int i = 0; i < fbTerms && i < termsSorted.size(); i ++) 
+        for (Map.Entry<String, Double> entry : termsSorted.entrySet()) {
+          if (i < fbTerms && i < termsSorted.size()) {
+            termsExpand.put(entry.getKey(), entry.getValue());
+            i ++;
+          }
+          else {
+            break;
+          }
+        }
+        
+        bwQuery.write(queryID + ":" + "#wand (");
+        for (Map.Entry<String, Double> entry : termsExpand.entrySet()) {
+          bwQuery.write(entry.getValue() + " " + entry.getKey() + " ");
+        }
+        bwQuery.write(")");
+        bwQuery.newLine();       
+      }
+      bwQuery.close();
+      
+    }
     
     Qryop qTree;
     String[] query = new String[2];
     String tmp = null;
     int nDoc = 100;
-    File queryFile = new File(params.get("queryFilePath"));
-    BufferedReader br = new BufferedReader(new FileReader(queryFile));
+       
+    BufferedReader br = new BufferedReader(new FileReader(queryFile)); 
     BufferedWriter bw = null;
     bw = new BufferedWriter(new FileWriter(new File(params.get("trecEvalOutputPath"))));
     
     while((tmp = br.readLine()) != null) {
       query = tmp.split(":");
+      if (params.containsKey("fb") && params.get("fb").equalsIgnoreCase("true")) {
+    	double w = Double.parseDouble(params.get("fbOrigWeight"));
+        query[1] = "#wand(" + w + " " + queriesOrig.get(query[0]) + " " + (1-w) + " " + query[1] + ")";
+      }
       qTree = parseQuery (query[1], model);
       System.out.println(query[0] + ":" + query[1]);
       QryResult result = qTree.evaluate (model);
-      //printResults (query[1], result);
-      //System.out.println("Before sort");
       outputResults(bw, query[0], result, nDoc, model);
     }
     br.close();
@@ -187,6 +375,7 @@ public class QryEval {
 
   }
 
+  
   /**
    *  Write an error message and exit.  This can be done in other
    *  ways, but I wanted something that takes just one statement so
@@ -549,4 +738,22 @@ class ResultComparatorUnranked implements Comparator {
 
     return res1.id.compareTo(res2.id);
   }
+}
+
+
+class TermMapComparator implements Comparator<String> {
+
+    Map<String, Double> base;
+    public TermMapComparator(Map<String, Double> base) {
+        this.base = base;
+    }
+
+    // Note: this comparator imposes orderings that are inconsistent with equals.    
+    public int compare(String a, String b) {
+        if (base.get(a) >= base.get(b)) {
+            return -1;
+        } else {
+            return 1;
+        } // returning 0 would merge keys
+    }
 }

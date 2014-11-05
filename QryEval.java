@@ -548,22 +548,49 @@ public class QryEval {
         // the token specifies a particular field (e.g., apple.title).    	
     	
     	if (tokenizeQuery(token).length != 0) {
+    	  
+    	  if (currentOp instanceof QryopSlWAnd) {
+    	    QryopSlWAnd tmpOp = (QryopSlWAnd) currentOp;
+    	    if (tmpOp.isNextWeight()) {
+    	      tmpOp.addWeight(new QryopIlTerm(token));
+    	      continue;
+    	    }
+    	  }
+    	  else if (currentOp instanceof QryopSlWSum) {
+      	    QryopSlWSum tmpOp = (QryopSlWSum) currentOp;
+      	    if (tmpOp.isNextWeight()) {
+      	      tmpOp.addWeight(new QryopIlTerm(token));
+      	      continue;
+      	    }
+      	  }
+          
     	  if (token.contains(".")) {
     		String[] termStrs = token.split("\\.");
-    		if (termStrs[1].charAt(0) >= '0' && termStrs[1].charAt(0) <= '9') {
-    		  currentOp.add(new QryopIlTerm(token));
-    		  //System.out.println(token);
-    		} else {
-    		  if (tokenizeQuery(termStrs[0]).length != 0) {
-    		    token = tokenizeQuery(termStrs[0])[0];
-    		    currentOp.add(new QryopIlTerm(token, termStrs[1]));
-    		  }
-        	//System.out.println(termStrs[0] + " " + termStrs[1]);
+    		if (tokenizeQuery(termStrs[0]).length != 0) {
+    		  token = tokenizeQuery(termStrs[0])[0];
+    		  currentOp.add(new QryopIlTerm(token, termStrs[1]));
     		}
+    		else {
+	    	  if (currentOp instanceof QryopSlWAnd) {
+	      	    ((QryopSlWAnd) currentOp).deleteWeight();
+	      	  }
+	      	  else if (currentOp instanceof QryopSlWSum) {
+	      	    ((QryopSlWSum) currentOp).deleteWeight();
+	      	  }
+    		}
+        	//System.out.println(termStrs[0] + " " + termStrs[1]);
           } else {
         	token = tokenizeQuery(token)[0];
             currentOp.add(new QryopIlTerm(token));
           }
+    	}
+    	else {
+    	  if (currentOp instanceof QryopSlWAnd) {
+    	    ((QryopSlWAnd) currentOp).deleteWeight();
+    	  }
+    	  else if (currentOp instanceof QryopSlWSum) {
+    	    ((QryopSlWSum) currentOp).deleteWeight();
+    	  }
     	}
       }
     }

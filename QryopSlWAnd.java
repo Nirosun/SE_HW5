@@ -33,7 +33,7 @@ public class QryopSlWAnd extends QryopSl {
    */
   public void add (Qryop a) {
 	
-	if (a instanceof QryopIlTerm) {
+	/*if (a instanceof QryopIlTerm) {
 		String strOp = a.toString();
 		String[] parts = strOp.split("\\.");
 		if (parts.length == 3 && parts[1].charAt(0) >= '0' && parts[1].charAt(0) <= '9') {
@@ -43,10 +43,36 @@ public class QryopSlWAnd extends QryopSl {
 			this.weights.add(Double.valueOf(parts[0] + "." + parts[1]));
 			return;
 		}
-	}
+	}*/
 	
     this.args.add(a);
   }
+  
+  public void addWeight(Qryop a) {
+	String strOp = a.toString();
+	String[] parts = strOp.split("\\.");
+	if (parts.length == 3) {
+	  this.weights.add(Double.valueOf(parts[0] + "." + parts[1]));
+	}
+	else {
+	  this.weights.add(Double.valueOf(parts[0]));
+	}
+    
+  }
+  
+  public void deleteWeight() {
+    if (!this.weights.isEmpty()) {
+      this.weights.remove(this.weights.size() - 1);
+    }
+  }
+  
+  public boolean isNextWeight () {
+    if (this.weights.size() == this.args.size()) {
+      return true;
+    }
+    return false;
+  }
+  
 
   /**
    *  Evaluates the query operator, including any child operators and

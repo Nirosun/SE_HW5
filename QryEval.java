@@ -268,9 +268,10 @@ public class QryEval {
       
       // for every query, form the HashMap <term, score> from top n documents
       for (String queryID : queryIDs) {
-    	//System.out.println(queryID);
+    	System.out.println(queryID);
         HashMap<String, Double> terms = new HashMap<String, Double>();
         HashMap<Integer, Double> docs = allDocs.get(queryID);
+        allDocs.remove(queryID);
         for (Integer docID : docs.keySet()) {
     	  TermVector tv = new TermVector(docID, "body");
     	  for (int i = 1; i < tv.stems.length; i ++) {
@@ -307,13 +308,13 @@ public class QryEval {
         	}*/
         	if (stemID != 0) {
               double p_t_d = 
-            		(tv.stemFreq(stemID) + fbMu * ctf / length_C) / 
+            		(tv.stemFreq(stemID) + fbMu * ctf / (double)length_C) / 
             		(double)(length_d + fbMu);
               terms.put(term, terms.get(term) + p_t_d * docs.get(docID));
         	}
           }
           //if ()
-          terms.put(term, terms.get(term) * Math.log(length_C / ctf));         
+          terms.put(term, terms.get(term) * Math.log(length_C / (double)ctf));         
         }
         
         // extract terms with highest scores
@@ -350,6 +351,8 @@ public class QryEval {
       
     }
     
+    printMemoryUsage(true);
+    
     Qryop qTree;
     String[] query = new String[2];
     String tmp = null;
@@ -369,6 +372,7 @@ public class QryEval {
       System.out.println(query[0] + ":" + query[1]);
       QryResult result = qTree.evaluate (model);
       outputResults(bw, query[0], result, nDoc, model);
+      printMemoryUsage(true);
     }
     br.close();
     bw.close();

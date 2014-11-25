@@ -22,7 +22,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
-public class QryEval {
+public class QryEval {	// NOW HW5
 
   static String usage = "Usage:  java " + System.getProperty("sun.java.command")
       + " paramFile\n\n";

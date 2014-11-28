@@ -75,7 +75,7 @@ public class QryEval {	// NOW HW5
     if (!params.containsKey("indexPath") || !params.containsKey("queryFilePath")
     		|| !params.containsKey("retrievalAlgorithm") 
     				|| !params.containsKey("trecEvalOutputPath")) {
-      System.err.println("Error: Parameters were missing.");
+      System.err.println("Error: General parameters were missing.");
       System.exit(1);
     }
 
@@ -89,37 +89,37 @@ public class QryEval {	// NOW HW5
 
     DocLengthStore s = new DocLengthStore(READER);
 
-    RetrievalModel model = null;
-    if (params.get("retrievalAlgorithm").equals("UnrankedBoolean")) {
-      model = new RetrievalModelUnrankedBoolean();
-    }
-    else if (params.get("retrievalAlgorithm").equals("RankedBoolean")) {
-      model = new RetrievalModelRankedBoolean();
-    }
-    else if (params.get("retrievalAlgorithm").equals("BM25")) {
-      model = new RetrievalModelBM25();
-      if (!params.containsKey("BM25:k_1") || !params.containsKey("BM25:b") ||
-    		  !params.containsKey("BM25:k_3")) {
-        System.err.println("Error: Parameters were missing.");
-        System.exit(1);
+    //RetrievalModel model = null;    
+    if (params.get("retrievalAlgorithm").equals("letor")) {
+      if (!params.containsKey("letor:trainingQueryFile") || !params.containsKey("letor:trainingQrelsFile") ||
+    		  !params.containsKey("letor:trainingFeatureVectorsFile") || !params.containsKey("letor:pageRankFile") ||
+    		  !params.containsKey("letor:featureDisable") || !params.containsKey("letor:svmRankLearnPath") ||
+    		  !params.containsKey("letor:svmRankClassifyPath") || !params.containsKey("letor:svmRankParamC") ||
+    		  !params.containsKey("letor:svmRankModelFile") || !params.containsKey("letor:testingFeatureVectorsFile") ||
+    		  !params.containsKey("letor:testingDocumentScores")) {
+		System.err.println("Error: LeToR parameters were missing.");
+		System.exit(1);
       }
-      model.setParameter("k_1", params.get("BM25:k_1"));
-      model.setParameter("b", params.get("BM25:b"));
-      model.setParameter("k_3", params.get("BM25:k_3"));
-    }
-    else if (params.get("retrievalAlgorithm").equals("Indri")) {
-      model = new RetrievalModelIndri();
       if (!params.containsKey("Indri:mu") || !params.containsKey("Indri:lambda")) {
-        System.err.println("Error: Parameters were missing.");
-        System.exit(1);
+  		System.err.println("Error: Indri parameters were missing.");
+  		System.exit(1);        
       }
-      model.setParameter("mu", params.get("Indri:mu"));
-      model.setParameter("lambda", params.get("Indri:lambda"));
+      if (!params.containsKey("BM25:k_1") || !params.containsKey("BM25:b") || !params.containsKey("BM25:k_3")) {
+  		System.err.println("Error: BM25 parameters were missing.");
+  		System.exit(1);        
+      }
     }
     else {
       System.err.println("Error: Retrieval algorithm not implemented.");
       System.exit(1);
-    }
+    }       
+    
+    double k_1 = Double.parseDouble(params.get("BM25:k_1"));
+    double k_3 = Double.parseDouble(params.get("BM25:k_3"));
+    double b = Double.parseDouble(params.get("BM25:b"));
+    double mu = Double.parseDouble(params.get("Indri:mu"));
+    double lambda = Double.parseDouble(params.get("Indri:lambda"));
+    
 
     /*
      *  The code below is an unorganized set of examples that show
@@ -154,204 +154,109 @@ public class QryEval {	// NOW HW5
      */
     
     //System.out.println(getInternalDocid("clueweb09-en0005-66-26526"));
-    File origQueryFile = new File(params.get("queryFilePath"));
-    HashMap<String, String> queriesOrig = new HashMap<String, String>();
+    File trainQueryFile = new File(params.get("letor:trainingQueryFile"));
+    File trainQrelsFile = new File(params.get("letor:trainingQrelsFile"));
+    File pageRankFile = new File(params.get("letor:pageRankFile"));
+    //HashMap<String, String> queriesOrig = new HashMap<String, String>();
+    //ArrayList<String> queryIDs = new ArrayList<String>();
+    
+    BufferedReader brTrainQuery = new BufferedReader(new FileReader(trainQueryFile)); 
+    BufferedReader brTrainQrels = new BufferedReader(new FileReader(trainQrelsFile));
+    BufferedReader brPageRank = new BufferedReader(new FileReader(pageRankFile));
+    
+    HashMap<String, String> queriesTrain = new HashMap<String, String>();
+    HashMap<String, Double> pageRanks = new HashMap<String, Double>(); 
     ArrayList<String> queryIDs = new ArrayList<String>();
     
-    BufferedReader brOrig = new BufferedReader(new FileReader(origQueryFile)); 
-    //rankingFile = new File("tmpRank.txt");
-    //BufferedWriter bwTmp = new BufferedWriter(new FileWriter(rankingFile)); 
-    
-    // get original queries
-    String[] queryOrig = new String[2];
-    String lineOrig = null;   
-    while((lineOrig = brOrig.readLine()) != null) {
-      queryOrig = lineOrig.split(":");
-      queryOrig[1] = "#and(" + queryOrig[1] + ")";
-      queriesOrig.put(queryOrig[0], queryOrig[1]);
-      queryIDs.add(queryOrig[0]);
+    // store pagerank into hashmap
+    String linePageRank = null;
+    while ((linePageRank = brPageRank.readLine()) != null) {
+      pageRanks.put(linePageRank.split("\\t")[0].trim(), Double.parseDouble(linePageRank.split("\\t")[1].trim()));
     }
-    brOrig.close();
-    //bwTmp.close(); 
-        
-    File queryFile = null;
+    brPageRank.close();
     
-    if (!params.containsKey("fb") || params.get("fb").equalsIgnoreCase("false")) { // don't use fb
-      queryFile = new File(params.get("queryFilePath"));
+    
+    // get training queries
+    String lineQuery = null;   
+    while ((lineQuery = brTrainQuery.readLine()) != null) {
+      String id = lineQuery.split(":")[0];
+      queryIDs.add(id);
+      queriesTrain.put(id, lineQuery.split(":")[1]);
     }
-    else {	// do use fb
-      if (!params.containsKey("fbDocs") || !params.containsKey("fbMu") || 
-    		  !params.containsKey("fbTerms") || !params.containsKey("fbOrigWeight") ||
-    		  !params.containsKey("fbExpansionQueryFile")) {
-        System.err.println("Error: missing fb parameters.");
-        System.exit(1);
-      }
-      
-      File rankingFile = null;	// ranking file for expansion
-      
-      // get parameters for fb
-      int fbDocs = Integer.parseInt(params.get("fbDocs"));
-      int fbTerms = Integer.parseInt(params.get("fbTerms"));
-      int fbMu = Integer.parseInt(params.get("fbMu"));
-      //double fbOrigWeight = Double.parseDouble(params.get("fbOrigWeight"));      
-      
-      if (params.containsKey("fbInitialRankingFile")) {	// have initial ranking, directly do expansion
-    	rankingFile = new File(params.get("fbInitialRankingFile"));
-      }
-      else {	// no initial ranking, first retrieve initial ranking
-        /*File initQueryFile = new File(params.get("queryFilePath"));
-        BufferedReader brTmp = new BufferedReader(new FileReader(initQueryFile)); 
-        rankingFile = new File("tmpRank.txt");
-        BufferedWriter bwTmp = new BufferedWriter(new FileWriter(rankingFile)); 
-        
-        Qryop qTreeTmp;
-        String[] queryTmp = new String[2];
-        String tmp = null;
-        int nDoc = 100;
-        
-        while((tmp = brTmp.readLine()) != null) {
-          queryTmp = tmp.split(":");
-          qTreeTmp = parseQuery (queryTmp[1], model);
-          System.out.println(queryTmp[0] + ":" + queryTmp[1]);
-          QryResult result = qTreeTmp.evaluate (model);
-          outputResults(bwTmp, queryTmp[0], result, nDoc, model);
-        }
-        brTmp.close();
-        bwTmp.close(); */
-    	
-	    Qryop qTreeTmp;
-        int nDoc = 100;
-        rankingFile = new File(params.get("trecEvalOutputPath"));
-        //new BufferedWriter(new FileWriter(new File(params.get("trecEvalOutputPath"))));
-        BufferedWriter bwRank = new BufferedWriter(new FileWriter(rankingFile)); 
-    	
-    	//for (Map.Entry<String, String> entry : queriesOrig.entrySet()) {
-    	for (String queryID : queryIDs) {
-    	  qTreeTmp = parseQuery (queriesOrig.get(queryID), model);
-    	  QryResult result = qTreeTmp.evaluate (model);
-          outputResults(bwRank, queryID, result, nDoc, model);
-    	}
-    	bwRank.close();
-        
-      }
-      
-      // use initial ranking to do expansion
+    brTrainQuery.close();
+    
+    // analyze each query and its relevance judgement
+    String fields[] = {"body", "title", "url", "inlink"};
+    HashMap<String, Double> BM25Scores = new HashMap<String, Double>();
+    HashMap<String, Double> IndriScores = new HashMap<String, Double>();
+    HashMap<String, Double> overlapScores = new HashMap<String, Double>();
+    
 
-      queryFile = new File(params.get("fbExpansionQueryFile"));
-      BufferedWriter bwQuery = new BufferedWriter(new FileWriter(queryFile)); 
-      
-      BufferedReader trecReader = new BufferedReader(new FileReader(rankingFile)); 
-      HashMap<String, HashMap<Integer, Double>> allDocs = new HashMap<String, HashMap<Integer, Double>>();
-      String[] singleTrec = new String[6];
-      String tmp = null;
-      String idNow = null;
-      int cnt = 0;
-      
-      // form HashMap <queryID, hashmap of <docID, score>>
-      while ((tmp = trecReader.readLine()) != null) {
-        singleTrec = tmp.split(" ");
-        //String queryID = singleTrec[0];
-        /*if (idNow == null) {
-          idNow = singleTrec[0];
-        }*/
-        if (idNow == null || !idNow.equals(singleTrec[0])) {
-          idNow = singleTrec[0];
-          cnt = 0;
-          allDocs.put(idNow, new HashMap<Integer, Double>());
-        }
-        if (cnt < fbDocs) {
-          allDocs.get(idNow).put(getInternalDocid(singleTrec[2]), Double.parseDouble(singleTrec[4]));
-          cnt ++;
-        }       
-      }
-      trecReader.close();
-      
-      // for every query, form the HashMap <term, score> from top n documents
-      for (String queryID : queryIDs) {
-    	System.out.println(queryID);
-        HashMap<String, Double> terms = new HashMap<String, Double>();
-        HashMap<Integer, Double> docs = allDocs.get(queryID);
-        allDocs.remove(queryID);
-        for (Integer docID : docs.keySet()) {
-    	  TermVector tv = new TermVector(docID, "body");
-    	  for (int i = 1; i < tv.stems.length; i ++) {
-    	    if (!terms.containsKey(tv.stems[i]) && !tv.stems[i].contains(".") &&
-    	    		!tv.stems[i].contains(",")) {
-    	      //String tmp = 
-    	      terms.put(tv.stems[i], 0.0);
-    	    }
-    	  }   	  
-          //System.out.println(tv.stemString(10)); // get the string for the 10th stem
-          //System.out.println(tv.stemDf(10)); // get its df
-          //System.out.println(tv.totalStemFreq(10)); // get its ctf
-        }
-        
-        long length_C = QryEval.READER.getSumTotalTermFreq ("body");
-        
-        // calcuate scores for the possible expansion terms
-        for (String term : terms.keySet()) {
-          long ctf = QryEval.READER.totalTermFreq(new Term("body", new BytesRef(term)));         
-          //double p_t_C = ctf / length_C;      
-          
-          for (Integer docID: docs.keySet()) {
-        	TermVector tv = new TermVector(docID, "body");
-        	int stemID = 0;        	
-        	long length_d = s.getDocLength("body", docID);
-        	
-        	for (int i = 1; i < tv.stemsLength(); i ++) {
-        	  if (tv.stems[i].equals(term)) {
-        		stemID = i;
-        	  }        			
-        	}
-        	/*if (stemID == 0) {
-        		break;
-        	}*/
-        	if (stemID != 0) {
-              double p_t_d = 
-            		(tv.stemFreq(stemID) + fbMu * ctf / (double)length_C) / 
-            		(double)(length_d + fbMu);
-              terms.put(term, terms.get(term) + p_t_d * docs.get(docID));
-        	}
-          }
-          //if ()
-          terms.put(term, terms.get(term) * Math.log(length_C / (double)ctf));         
-        }
-        
-        // extract terms with highest scores
-        TermMapComparator tmc = new TermMapComparator(terms);
-        TreeMap<String,Double> termsSorted = new TreeMap<String,Double>(tmc);
-        TreeMap<String,Double> termsExpand = new TreeMap<String,Double>(tmc);
-        termsSorted.putAll(terms);
-        int i = 0;
-        
-        //for (int i = 0; i < fbTerms && i < termsSorted.size(); i ++) 
-        for (Map.Entry<String, Double> entry : termsSorted.entrySet()) {
-          if (i < fbTerms && i < termsSorted.size()) {
-            termsExpand.put(entry.getKey(), entry.getValue());
-            i ++;
-          }
-          else {
-            break;
-          }
-        }
-        
-        bwQuery.write(queryID + ":" + "#wand(");
-        int j = 0;
-        for (Map.Entry<String, Double> entry : termsExpand.entrySet()) {
-          if (j != 0) {
-            bwQuery.write(" ");
-          }
-          j ++;
-          bwQuery.write(entry.getValue() + " " + entry.getKey());
-        }
-        bwQuery.write(")");
-        bwQuery.newLine();       
-      }
-      bwQuery.close();
-      
-    }
     
-    printMemoryUsage(true);
+    String lineQrels = null;
+    while ((lineQrels = brTrainQrels.readLine()) != null) {
+      String[] qrels = lineQrels.split(" ");
+      String qid = qrels[0];
+      String exDocID = qrels[2];
+      int rel = Integer.parseInt(qrels[3]);      
+      int docID = QryEval.getInternalDocid(exDocID);
+      double pageRank = 0;
+      
+      String[] stems = QryEval.tokenizeQuery(queriesTrain.get(qid));
+      ArrayList<String> queryStems = new ArrayList<String>();
+      for (int i = 0; i < stems.length; i ++) {
+        queryStems.add(stems[i]);
+      }
+      
+      // get page rank
+      if (pageRanks.containsKey(exDocID)) {
+        pageRank = pageRanks.get(exDocID);
+      }
+      
+      // get BM25, Indri and term overlap scores
+      for (int i = 0; i < fields.length; i ++) {
+        Terms terms = QryEval.READER.getTermVector(docID, fields[i]);
+        if (terms == null) {
+          // field doesn't exist!
+          //System.out.println("Doc missing field: " + docID + " " + fields[i]);
+          BM25Scores.put(fields[i], 0.0);
+          IndriScores.put(fields[i], 0.0);
+          overlapScores.put(fields[i], 0.0);
+        }  
+        else {
+          TermVector tv = new TermVector(docID, fields[i]);
+          
+          // get BM25 score
+          int N = QryEval.READER.getDocCount(fields[i]);
+          double avg_doclen = QryEval.READER.getSumTotalTermFreq(fields[i]) / (double)N;
+          long doclen = s.getDocLength(fields[i], docID);
+          double totalBM25Score = 0.0;
+          for (int j = 0; j < tv.stemsLength(); j ++) {
+            if (queryStems.contains(tv.stemString(j))) {
+              int tf = tv.stemFreq(j);
+              int df = tv.stemDf(j);
+              double idf = Math.log((N - df + 0.5) / (df + 0.5));
+              double tfWeight = tf / (tf + k_1 * (1 - b + b * (doclen / (double) avg_doclen)));
+              totalBM25Score += idf * tfWeight * (k_3 + 1) / (double)(k_3 + 1);
+            }
+          }
+          
+          // get Indri score
+          
+          
+          
+          
+        }
+      }
+      
+      //TermVector tvBody = new TermVector(docID, "body");
+      
+    }    
+    brTrainQrels.close();
+        
+    /*File queryFile = null;
+    
+    queryFile = new File(params.get("queryFilePath"));
     
     Qryop qTree;
     String[] query = new String[2];
@@ -375,17 +280,13 @@ public class QryEval {	// NOW HW5
       printMemoryUsage(true);
     }
     br.close();
-    bw.close();
+    bw.close();*/
     
 
     // Later HW assignments will use more RAM, so you want to be aware
     // of how much memory your program uses.
 
     printMemoryUsage(false);
-    
-    //long endTime = System.currentTimeMillis();
-    //long timeUsed = (endTime - beginTime) / 100;
-    //System.out.println("Time used: " + timeUsed + "s");
 
   }
 

@@ -545,43 +545,36 @@ public class QryEval {	// NOW HW5
         
         bwFeature.write("# " + exDocIDs.get(i));
         bwFeature.newLine();
-      }
-
-      
+      }     
     }    
     brTrainQrels.close();
     bwFeature.close();
     
     
+    // train
+    String learnPath = params.get("letor:svmRankLearnPath");
+    String paramC = params.get("letor:svmRankParamC");
+    String featureFileName = params.get("letor:trainingFeatureVectorsFile");
+    String modelFileName = params.get("letor:svmRankModelFile");
     
-        
-    /*File queryFile = null;
-    
-    queryFile = new File(params.get("queryFilePath"));
-    
-    Qryop qTree;
-    String[] query = new String[2];
-    String tmp = null;
-    int nDoc = 100;
-       
-    BufferedReader br = new BufferedReader(new FileReader(queryFile)); 
-    BufferedWriter bw = null;
-    bw = new BufferedWriter(new FileWriter(new File(params.get("trecEvalOutputPath"))));
-    
-    while((tmp = br.readLine()) != null) {
-      query = tmp.split(":");
-      if (params.containsKey("fb") && params.get("fb").equalsIgnoreCase("true")) {
-    	double w = Double.parseDouble(params.get("fbOrigWeight"));
-        query[1] = "#wand(" + w + " " + queriesOrig.get(query[0]) + " " + (1-w) + " " + query[1] + ")";
-      }
-      qTree = parseQuery (query[1], model);
-      System.out.println(query[0] + ":" + query[1]);
-      QryResult result = qTree.evaluate (model);
-      outputResults(bw, query[0], result, nDoc, model);
-      printMemoryUsage(true);
+    Process cmdProc = Runtime.getRuntime().exec(
+    		new String[] {learnPath, "-c", paramC, featureFileName, modelFileName});
+    BufferedReader stdoutReader = new BufferedReader(
+    		new InputStreamReader(cmdProc.getInputStream()));
+    while ((line = stdoutReader.readLine()) != null) {
+      System.out.println(line);
     }
-    br.close();
-    bw.close();*/
+    BufferedReader stderrReader = new BufferedReader(
+    		new InputStreamReader(cmdProc.getErrorStream()));
+    while ((line = stderrReader.readLine()) != null) {
+      System.out.println(line);
+    }    
+    
+    int retValue = cmdProc.waitFor();
+    if (retValue != 0) {
+      throw new Exception("SVM Rank crashed.");
+    }
+    
     
 
     // Later HW assignments will use more RAM, so you want to be aware

@@ -93,7 +93,7 @@ public class QryEval {	// NOW HW5
     if (params.get("retrievalAlgorithm").equals("letor")) {
       if (!params.containsKey("letor:trainingQueryFile") || !params.containsKey("letor:trainingQrelsFile") ||
     		  !params.containsKey("letor:trainingFeatureVectorsFile") || !params.containsKey("letor:pageRankFile") ||
-    		  !params.containsKey("letor:featureDisable") || !params.containsKey("letor:svmRankLearnPath") ||
+    		  !params.containsKey("letor:svmRankLearnPath") ||
     		  !params.containsKey("letor:svmRankClassifyPath") || !params.containsKey("letor:svmRankParamC") ||
     		  !params.containsKey("letor:svmRankModelFile") || !params.containsKey("letor:testingFeatureVectorsFile") ||
     		  !params.containsKey("letor:testingDocumentScores")) {
@@ -120,6 +120,13 @@ public class QryEval {	// NOW HW5
     double mu = Double.parseDouble(params.get("Indri:mu"));
     double lambda = Double.parseDouble(params.get("Indri:lambda"));
     
+    ArrayList<Integer> disableIDs = new ArrayList<Integer>();
+    if (params.containsKey("letor:featureDisable")) {
+      String[] disableRaw = params.get("letor:featureDisable").split(",");    
+      for (int i = 0; i < disableRaw.length; i ++) {
+        disableIDs.add(Integer.parseInt(disableRaw[i]));
+      }
+    }
 
     /*
      *  The code below is an unorganized set of examples that show
@@ -157,21 +164,23 @@ public class QryEval {	// NOW HW5
     File trainQueryFile = new File(params.get("letor:trainingQueryFile"));
     File trainQrelsFile = new File(params.get("letor:trainingQrelsFile"));
     File pageRankFile = new File(params.get("letor:pageRankFile"));
-    //HashMap<String, String> queriesOrig = new HashMap<String, String>();
-    //ArrayList<String> queryIDs = new ArrayList<String>();
+    File featureFile = new File(params.get("letor:trainingFeatureVectorsFile"));
     
     BufferedReader brTrainQuery = new BufferedReader(new FileReader(trainQueryFile)); 
     BufferedReader brTrainQrels = new BufferedReader(new FileReader(trainQrelsFile));
     BufferedReader brPageRank = new BufferedReader(new FileReader(pageRankFile));
+    BufferedWriter bwFeature = new BufferedWriter(new FileWriter(featureFile));
     
     HashMap<String, String> queriesTrain = new HashMap<String, String>();
-    HashMap<String, Double> pageRanks = new HashMap<String, Double>(); 
+    HashMap<String, ArrayList<String>> qidToDocs = new HashMap<String, ArrayList<String>>();
+    HashMap<String, Double> pageRanksWhole = new HashMap<String, Double>(); 
     ArrayList<String> queryIDs = new ArrayList<String>();
+    
     
     // store pagerank into hashmap
     String linePageRank = null;
     while ((linePageRank = brPageRank.readLine()) != null) {
-      pageRanks.put(linePageRank.split("\\t")[0].trim(), Double.parseDouble(linePageRank.split("\\t")[1].trim()));
+      pageRanksWhole.put(linePageRank.split("\\t")[0].trim(), Double.parseDouble(linePageRank.split("\\t")[1].trim()));
     }
     brPageRank.close();
     
@@ -187,72 +196,364 @@ public class QryEval {	// NOW HW5
     
     // analyze each query and its relevance judgement
     String fields[] = {"body", "title", "url", "inlink"};
-    HashMap<String, Double> BM25Scores = new HashMap<String, Double>();
-    HashMap<String, Double> IndriScores = new HashMap<String, Double>();
-    HashMap<String, Double> overlapScores = new HashMap<String, Double>();
-    
-
+    HashMap<String, ArrayList<String>> qidToDocIDs = new HashMap<String, ArrayList<String>>();
+    HashMap<String, ArrayList<Integer>> qidToRels = new HashMap<String, ArrayList<Integer>>();    
     
     String lineQrels = null;
+    String idLast = null;
     while ((lineQrels = brTrainQrels.readLine()) != null) {
       String[] qrels = lineQrels.split(" ");
       String qid = qrels[0];
       String exDocID = qrels[2];
       int rel = Integer.parseInt(qrels[3]);      
-      int docID = QryEval.getInternalDocid(exDocID);
-      double pageRank = 0;
+      //int docID = QryEval.getInternalDocid(exDocID);
       
+      if (idLast == null || !idLast.equals(qid)) {
+        qidToDocIDs.put(qid, new ArrayList<String>());
+        qidToRels.put(qid, new ArrayList<Integer>());
+        idLast = qid;
+      }
+      
+      qidToDocIDs.get(qid).add(exDocID);
+      qidToRels.get(qid).add(rel);
+    }
+    
+    System.out.println("Training: ");
+    
+    // for each query
+    for (String qid : queryIDs) {
+      System.out.println(qid + ":" + queriesTrain.get(qid));
+    	
       String[] stems = QryEval.tokenizeQuery(queriesTrain.get(qid));
       ArrayList<String> queryStems = new ArrayList<String>();
       for (int i = 0; i < stems.length; i ++) {
         queryStems.add(stems[i]);
       }
+    	
+      ArrayList<String> exDocIDs = qidToDocIDs.get(qid);
+      ArrayList<Integer> rels = qidToRels.get(qid);     
+      ArrayList<Integer> docIDs = new ArrayList<Integer>();
       
-      // get page rank
-      if (pageRanks.containsKey(exDocID)) {
-        pageRank = pageRanks.get(exDocID);
+      for (String exID : exDocIDs) {
+    	docIDs.add(QryEval.getInternalDocid(exID));
       }
       
-      // get BM25, Indri and term overlap scores
+      // define features for each specific query
+      ArrayList<Double> spamScores = new ArrayList<Double>();
+      ArrayList<Double> urlDepths = new ArrayList<Double>();
+      ArrayList<Double> fromWikis = new ArrayList<Double>();
+      ArrayList<Double> pageRanks = new ArrayList<Double>();
+      ArrayList<HashMap<String, Double>> BM25Scores = new ArrayList<HashMap<String, Double>>();
+      ArrayList<HashMap<String, Double>> IndriScores = new ArrayList<HashMap<String, Double>>();
+      ArrayList<HashMap<String, Double>> overlapScores = new ArrayList<HashMap<String, Double>>();
+      
+      double maxSpamScore = 0;
+      double minSpamScore = 99;
+      double maxUrlDepth = 0;
+      double minUrlDepth = Double.MAX_VALUE;
+      double maxPageRank = Double.MIN_VALUE;
+      double minPageRank = Double.MAX_VALUE;
+      double maxFromWiki = 0;
+      double minFromWiki = 1;
+      HashMap<String, Double> maxBM25Score = new HashMap<String, Double>();
+      HashMap<String, Double> minBM25Score = new HashMap<String, Double>();
+      HashMap<String, Double> maxIndriScore = new HashMap<String, Double>();
+      HashMap<String, Double> minIndriScore = new HashMap<String, Double>();
+      HashMap<String, Double> maxOverlapScore = new HashMap<String, Double>();
+      HashMap<String, Double> minOverlapScore = new HashMap<String, Double>();
+      
       for (int i = 0; i < fields.length; i ++) {
-        Terms terms = QryEval.READER.getTermVector(docID, fields[i]);
-        if (terms == null) {
-          // field doesn't exist!
-          //System.out.println("Doc missing field: " + docID + " " + fields[i]);
-          BM25Scores.put(fields[i], 0.0);
-          IndriScores.put(fields[i], 0.0);
-          overlapScores.put(fields[i], 0.0);
-        }  
-        else {
-          TermVector tv = new TermVector(docID, fields[i]);
-          
-          // get BM25 score
-          int N = QryEval.READER.getDocCount(fields[i]);
-          double avg_doclen = QryEval.READER.getSumTotalTermFreq(fields[i]) / (double)N;
-          long doclen = s.getDocLength(fields[i], docID);
-          double totalBM25Score = 0.0;
-          for (int j = 0; j < tv.stemsLength(); j ++) {
-            if (queryStems.contains(tv.stemString(j))) {
-              int tf = tv.stemFreq(j);
-              int df = tv.stemDf(j);
-              double idf = Math.log((N - df + 0.5) / (df + 0.5));
-              double tfWeight = tf / (tf + k_1 * (1 - b + b * (doclen / (double) avg_doclen)));
-              totalBM25Score += idf * tfWeight * (k_3 + 1) / (double)(k_3 + 1);
-            }
+        maxBM25Score.put(fields[i], 0.0);
+        minBM25Score.put(fields[i], Double.MAX_VALUE);
+        maxIndriScore.put(fields[i], 0.0);
+        minIndriScore.put(fields[i], Double.MAX_VALUE);
+        maxOverlapScore.put(fields[i], 0.0);
+        minOverlapScore.put(fields[i], 1.0);
+      }    
+      
+      // for each document for this query
+      for (Integer docID : docIDs) {
+        //double pageRank = 0;     
+      
+        String exDocID = QryEval.getExternalDocid(docID);
+      
+        // get page rank
+        if (pageRanksWhole.containsKey(exDocID)) {
+          double rankTmp = pageRanksWhole.get(exDocID);
+          pageRanks.add(rankTmp);
+          if (rankTmp > maxPageRank) {
+            maxPageRank = rankTmp;
           }
+          else if (rankTmp < minPageRank) {
+            minPageRank = rankTmp;
+          }
+        }
+        else {
+          pageRanks.add(Double.MAX_VALUE);
+        }
+      
+        // get spam score
+        Document d = QryEval.READER.document(docID);
+        double spamScore = (double)Integer.parseInt(d.get("score"));
+        spamScores.add(spamScore);
+        if (spamScore > maxSpamScore) {
+          maxSpamScore = spamScore;
+        }
+        else if (spamScore < minSpamScore) {
+          minSpamScore = spamScore;
+        }
+      
+        // get url depth and FromWikipedia score
+        String rawUrl = d.get("rawUrl");
+        double urlDepth = 0;
+        //int fromWikipedia = 0;
+      
+        int idTmp = 0;      
+        while ((idTmp = rawUrl.indexOf("/", idTmp)) < rawUrl.length() && idTmp != -1) {
+    	  idTmp ++;
+    	  urlDepth++;
+        }
+        urlDepths.add(urlDepth);
+        if (urlDepth > maxUrlDepth) {
+          maxUrlDepth = urlDepth;
+        }
+        else if (urlDepth < minUrlDepth) {
+          minUrlDepth = urlDepth;
+        }
+        
+        double fromWiki = rawUrl.contains("wikipedia.org") ? 1 : 0;
+        fromWikis.add(fromWiki);
+        if (fromWiki > maxFromWiki) {
+          maxFromWiki = fromWiki;
+        }
+        else if (fromWiki < minFromWiki) {
+          minFromWiki = fromWiki;
+        }
+      
+        // get BM25, Indri and term overlap scores
+        BM25Scores.add(new HashMap<String, Double>());
+        IndriScores.add(new HashMap<String, Double>());
+        overlapScores.add(new HashMap<String, Double>());
+        
+        for (int i = 0; i < fields.length; i ++) {
+          int idForList = BM25Scores.size() - 1;
           
-          // get Indri score
+          Terms terms = QryEval.READER.getTermVector(docID, fields[i]);
+          if (terms == null) {
+            // field doesn't exist!
+            //System.out.println("Doc missing field: " + docID + " " + fields[i]);
+        	BM25Scores.get(idForList).put(fields[i], Double.MAX_VALUE);
+            IndriScores.get(idForList).put(fields[i], Double.MAX_VALUE);
+            overlapScores.get(idForList).put(fields[i], Double.MAX_VALUE);
+          }  
+          else {
+            TermVector tv = new TermVector(docID, fields[i]);
           
+            // get BM25 score
+            int N = QryEval.READER.getDocCount(fields[i]);
+            long lengthC = QryEval.READER.getSumTotalTermFreq(fields[i]);
+            double avg_doclen = lengthC / (double)N;
+            long doclen = s.getDocLength(fields[i], docID);
+            
+            double totalBM25Score = 0.0;
+            for (int j = 0; j < tv.stemsLength(); j ++) {
+              if (queryStems.contains(tv.stemString(j))) {
+                int tf = tv.stemFreq(j);
+                int df = tv.stemDf(j);
+                double idf = Math.log((N - df + 0.5) / (df + 0.5));
+                double tfWeight = tf / (tf + k_1 * (1 - b + b * (doclen / (double) avg_doclen)));
+                totalBM25Score += idf * tfWeight * (k_3 + 1) / (double)(k_3 + 1);
+              }
+            }
+            BM25Scores.get(idForList).put(fields[i], totalBM25Score);
+            if (totalBM25Score > maxBM25Score.get(fields[i])) {
+              maxBM25Score.put(fields[i], totalBM25Score);
+            }
+            else if (totalBM25Score < minBM25Score.get(fields[i])) {
+              minBM25Score.put(fields[i], totalBM25Score);              
+            }
           
+            // get Indri score
+            double indriScore = 1.0;
+            boolean matchFlag = false;
+            for (int j = 0; j < tv.stemsLength(); j ++) {
+              if (queryStems.contains(tv.stemString(j))) {
+            	matchFlag = true;
+            	long ctf = tv.totalStemFreq(j);
+                double p_qi_C = ctf / (double) lengthC;
+                int tf = tv.stemFreq(j);
+                double p_qi_d = (tf + mu * p_qi_C) / (double)(doclen + mu);
+                indriScore *= lambda * p_qi_d + (1 - lambda) * p_qi_C;                               
+              }
+            }
+            if (matchFlag) {
+              indriScore = Math.pow(indriScore, 1/(double)queryStems.size());
+            }
+            else {
+              indriScore = 0.0;
+            }
+            IndriScores.get(idForList).put(fields[i], indriScore);
+            if (indriScore > maxIndriScore.get(fields[i])) {
+              maxIndriScore.put(fields[i], indriScore);
+            }
+            else if (indriScore < minIndriScore.get(fields[i])) {
+              minIndriScore.put(fields[i], indriScore);              
+            }
           
-          
+            // get term overlap score
+            int matchCount = 0;
+            for (int j = 0; j < tv.stemsLength(); j ++) {
+              if (queryStems.contains(tv.stemString(j))) {
+                matchCount ++;                             
+              }
+            }
+            double overScore = matchCount / (double)queryStems.size();
+            overlapScores.get(idForList).put(fields[i], overScore);
+            if (overScore > maxOverlapScore.get(fields[i])) {
+              maxOverlapScore.put(fields[i], overScore);
+            }
+            else if (overScore < minOverlapScore.get(fields[i])) {
+              minOverlapScore.put(fields[i], overScore);              
+            }            
+          }
         }
       }
       
-      //TermVector tvBody = new TermVector(docID, "body");
+      // normalize feature values
+      for (int i = 0; i < docIDs.size(); i ++) {
+        // normalize spam score
+        if (maxSpamScore != minSpamScore) {
+          spamScores.set(i, (spamScores.get(i) - minSpamScore) / (maxSpamScore - minSpamScore));
+        }
+        else {
+          spamScores.set(i, 0.0);
+        }        
+        // normalize page rank
+        if (maxPageRank != minPageRank && pageRanks.get(i) != Double.MAX_VALUE) {
+          pageRanks.set(i, (pageRanks.get(i) - minPageRank) / (maxPageRank - minPageRank));
+        }
+        else {
+          pageRanks.set(i, 0.0);
+        }        
+        // normalize url depth
+        if (maxUrlDepth != minUrlDepth) {
+          urlDepths.set(i, (urlDepths.get(i) - minUrlDepth) / (maxUrlDepth - minUrlDepth));
+        }
+        else {
+          urlDepths.set(i, 0.0);
+        }
+        // normalize fromwikipedia score
+        if (maxFromWiki != minFromWiki) {
+          fromWikis.set(i, (fromWikis.get(i) - minFromWiki) / (maxFromWiki - minFromWiki));
+        }
+        else {
+          fromWikis.set(i, 0.0);
+        }
+        // normalize BM25, Indri, overlap scores
+        for (int j = 0; j < fields.length; j ++) {
+          double bm25Tmp = BM25Scores.get(i).get(fields[j]);
+          double bm25Min = minBM25Score.get(fields[j]);
+          double bm25Max = maxBM25Score.get(fields[j]);
+          if (bm25Max != bm25Min && bm25Tmp != Double.MAX_VALUE) {
+            BM25Scores.get(i).put(fields[j], (bm25Tmp - bm25Min) / (bm25Max - bm25Min));
+          }
+          else {
+        	BM25Scores.get(i).put(fields[j], 0.0);
+          }
+          double indriTmp = IndriScores.get(i).get(fields[j]);
+          double indriMin = minIndriScore.get(fields[j]);
+          double indriMax = maxIndriScore.get(fields[j]);
+          if (indriMax != indriMin && indriTmp != Double.MAX_VALUE) {
+            IndriScores.get(i).put(fields[j], (indriTmp - indriMin) / (indriMax - indriMin));
+          }
+          else {
+        	IndriScores.get(i).put(fields[j], 0.0);
+          }
+          double overlapTmp = overlapScores.get(i).get(fields[j]);
+          double overlapMin = minOverlapScore.get(fields[j]);
+          double overlapMax = maxOverlapScore.get(fields[j]);
+          if (overlapMax != overlapMin && overlapTmp != Double.MAX_VALUE) {
+            overlapScores.get(i).put(fields[j], (overlapTmp - overlapMin) / (overlapMax - overlapMin));
+          }
+          else {
+        	overlapScores.get(i).put(fields[j], 0.0);
+          }          
+        }
+        
+      }
+      
+      // write the feature vectors to file
+      for (int i = 0; i < docIDs.size(); i ++) {
+        bwFeature.write(rels.get(i) + " qid:" + qid + " ");
+        
+        for (int j = 1; j <= 16; j ++) {
+          if (!disableIDs.contains(j)) {
+        	bwFeature.write(j + ":" + "");
+            switch (j) {
+            case 1: 
+              bwFeature.write(spamScores.get(i).toString());
+              break;
+            case 2:
+              bwFeature.write(urlDepths.get(i).toString());
+              break;
+            case 3:
+              bwFeature.write(fromWikis.get(i).toString());
+              break;
+            case 4:
+              bwFeature.write(pageRanks.get(i).toString());
+              break;
+            case 5:
+              bwFeature.write(BM25Scores.get(i).get("body").toString());
+              break;
+            case 6:
+              bwFeature.write(IndriScores.get(i).get("body").toString());
+              break;
+            case 7:
+              bwFeature.write(overlapScores.get(i).get("body").toString());
+              break;
+            case 8:
+              bwFeature.write(BM25Scores.get(i).get("title").toString());
+              break;
+            case 9:
+              bwFeature.write(IndriScores.get(i).get("title").toString());
+              break;
+            case 10:
+              bwFeature.write(overlapScores.get(i).get("title").toString());
+              break;
+            case 11:
+              bwFeature.write(BM25Scores.get(i).get("url").toString());
+              break;
+            case 12:
+              bwFeature.write(IndriScores.get(i).get("url").toString());
+              break;
+            case 13:
+              bwFeature.write(overlapScores.get(i).get("url").toString());
+              break;
+            case 14:
+              bwFeature.write(BM25Scores.get(i).get("inlink").toString());
+              break;
+            case 15:
+              bwFeature.write(IndriScores.get(i).get("inlink").toString());
+              break;
+            case 16:
+              bwFeature.write(overlapScores.get(i).get("inlink").toString());
+              break;
+            }
+            bwFeature.write(" ");
+          }
+        }
+        
+        bwFeature.write("# " + exDocIDs.get(i));
+        bwFeature.newLine();
+      }
+
       
     }    
     brTrainQrels.close();
+    bwFeature.close();
+    
+    
+    
         
     /*File queryFile = null;
     

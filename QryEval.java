@@ -247,6 +247,9 @@ public class QryEval {	// NOW HW5
       ArrayList<HashMap<String, Double>> IndriScores = new ArrayList<HashMap<String, Double>>();
       ArrayList<HashMap<String, Double>> overlapScores = new ArrayList<HashMap<String, Double>>();
       
+      // custom features
+      ArrayList<Double> lncltcScores = new ArrayList<Double>();
+      
       double maxSpamScore = 0;
       double minSpamScore = 99;
       double maxUrlDepth = 0;
@@ -261,6 +264,10 @@ public class QryEval {	// NOW HW5
       HashMap<String, Double> minIndriScore = new HashMap<String, Double>();
       HashMap<String, Double> maxOverlapScore = new HashMap<String, Double>();
       HashMap<String, Double> minOverlapScore = new HashMap<String, Double>();
+      
+      // custom max/min
+      double maxLncltcScore = 0;
+      double minLncltcScore = Double.MAX_VALUE;
       
       for (int i = 0; i < fields.length; i ++) {
         maxBM25Score.put(fields[i], 0.0);
@@ -305,9 +312,7 @@ public class QryEval {	// NOW HW5
       
         // get url depth and FromWikipedia score
         String rawUrl = d.get("rawUrl");
-        double urlDepth = 0;
-        //int fromWikipedia = 0;
-      
+        double urlDepth = 0;      
         int idTmp = 0;      
         while ((idTmp = rawUrl.indexOf("/", idTmp)) < rawUrl.length() && idTmp != -1) {
     	  idTmp ++;
@@ -319,8 +324,7 @@ public class QryEval {	// NOW HW5
         }
         else if (urlDepth < minUrlDepth) {
           minUrlDepth = urlDepth;
-        }
-        
+        }        
         double fromWiki = rawUrl.contains("wikipedia.org") ? 1 : 0;
         fromWikis.add(fromWiki);
         if (fromWiki > maxFromWiki) {
@@ -350,21 +354,7 @@ public class QryEval {	// NOW HW5
             TermVector tv = new TermVector(docID, fields[i]);
           
             // get BM25 score
-            int N = QryEval.READER.getDocCount(fields[i]);
-            long lengthC = QryEval.READER.getSumTotalTermFreq(fields[i]);
-            double avg_doclen = lengthC / (double)N;
-            long doclen = s.getDocLength(fields[i], docID);
-            
-            double totalBM25Score = 0.0;
-            for (int j = 1; j < tv.stemsLength(); j ++) {
-              if (queryStems.contains(tv.stemString(j))) {
-                int tf = tv.stemFreq(j);
-                int df = tv.stemDf(j);
-                double idf = Math.log((N - df + 0.5) / (df + 0.5));
-                double tfWeight = (double)tf / (tf + k_1 * ((1 - b) + b * (doclen / (double) avg_doclen)));
-                totalBM25Score += (double)idf * tfWeight * (k_3 + 1) / (double)(k_3 + 1);
-              }
-            }
+            double totalBM25Score = getBM25Score(docID, fields[i], queryStems, k_1, b, k_3);
             BM25Scores.get(idForList).put(fields[i], totalBM25Score);
             if (totalBM25Score > maxBM25Score.get(fields[i])) {
               maxBM25Score.put(fields[i], totalBM25Score);
@@ -374,42 +364,7 @@ public class QryEval {	// NOW HW5
             }
           
             // get Indri score
-            double indriScore = 1.0;
-            boolean matchFlag = false;
-            HashMap<String, Integer> stemToTf = new HashMap<String, Integer>();
-            for (int j = 0; j < tv.stemsLength(); j ++) {
-              stemToTf.put(tv.stemString(j), tv.stemFreq(j));
-            }
-            for (String stem : queryStems) {
-              long ctf = QryEval.READER.totalTermFreq (new Term (fields[i], new BytesRef(stem)));
-              double p_qi_C = ctf / (double) lengthC;
-              int tf = 0;
-              if (stemToTf.containsKey(stem)) {
-            	matchFlag = true;
-                tf = stemToTf.get(stem);
-              }
-              double p_qi_d = (tf + mu * p_qi_C) / (double)(doclen + mu);
-              indriScore *= lambda * p_qi_d + (1 - lambda) * p_qi_C;
-            }
-            
-            /*for (int j = 0; j < tv.stemsLength(); j ++) {
-              int tf = 0;
-              if (queryStems.contains(tv.stemString(j))) {
-            	matchFlag = true;
-            	tf = tv.stemFreq(j);
-              }
-              //long ctf = tv.totalStemFreq(j);
-              long ctf = QryEval.READER.totalTermFreq (new Term (fields[i], new BytesRef()));
-              double p_qi_C = ctf / (double) lengthC;
-              double p_qi_d = (tf + mu * p_qi_C) / (double)(doclen + mu);
-              indriScore *= lambda * p_qi_d + (1 - lambda) * p_qi_C;    
-            }*/
-            if (matchFlag) {
-              indriScore = Math.pow(indriScore, 1.0 / (double)queryStems.size());
-            }
-            else {
-              indriScore = 0.0;
-            }
+            double indriScore = getIndriScore(docID, fields[i], queryStems, mu, lambda);
             IndriScores.get(idForList).put(fields[i], indriScore);
             if (indriScore > maxIndriScore.get(fields[i])) {
               maxIndriScore.put(fields[i], indriScore);
@@ -435,6 +390,25 @@ public class QryEval {	// NOW HW5
             }            
           }
         }
+        
+        // get lnc.ltc score
+        Terms terms = QryEval.READER.getTermVector(docID, "body");
+        if (terms == null) {
+          // field doesn't exist!
+          //System.out.println("Doc missing field: " + docID + " " + fields[i]);
+      	  lncltcScores.add(Double.MAX_VALUE);
+        }
+        else {
+    	  double lncltcScore = getLncLtcScore(docID, "body", queryStems);
+          lncltcScores.add(lncltcScore);
+          if (lncltcScore > maxLncltcScore) {
+            maxLncltcScore = lncltcScore;
+          }
+          else if (lncltcScore < minLncltcScore) {
+            minLncltcScore = lncltcScore;              
+          } 
+        }
+        
       }
       
       // normalize feature values
@@ -498,13 +472,21 @@ public class QryEval {	// NOW HW5
           }          
         }
         
+        // normalize lnc.ltc scores
+        if (maxLncltcScore != minLncltcScore && lncltcScores.get(i) != Double.MAX_VALUE) {
+          lncltcScores.set(i, (lncltcScores.get(i) - minLncltcScore) / (maxLncltcScore - minLncltcScore));
+        }
+        else {
+          lncltcScores.set(i, 0.0);
+        } 
+        
       }
       
       // write the feature vectors to file
       for (int i = 0; i < docIDs.size(); i ++) {
         bwFeatureTrain.write(rels.get(i) + " qid:" + qid + " ");
         
-        for (int j = 1; j <= 16; j ++) {
+        for (int j = 1; j <= 17; j ++) {
           if (!disableIDs.contains(j)) {
         	bwFeatureTrain.write(j + ":" + "");
             switch (j) {
@@ -555,6 +537,9 @@ public class QryEval {	// NOW HW5
               break;
             case 16:
               bwFeatureTrain.write(overlapScores.get(i).get("inlink").toString());
+              break;
+            case 17:  
+              bwFeatureTrain.write(lncltcScores.get(i).toString());
               break;
             }
             bwFeatureTrain.write(" ");
@@ -673,6 +658,9 @@ public class QryEval {	// NOW HW5
       ArrayList<HashMap<String, Double>> IndriScores = new ArrayList<HashMap<String, Double>>();
       ArrayList<HashMap<String, Double>> overlapScores = new ArrayList<HashMap<String, Double>>();
       
+      // custom features
+      ArrayList<Double> lncltcScores = new ArrayList<Double>();
+      
       double maxSpamScore = 0;
       double minSpamScore = 99;
       double maxUrlDepth = 0;
@@ -687,6 +675,10 @@ public class QryEval {	// NOW HW5
       HashMap<String, Double> minIndriScore = new HashMap<String, Double>();
       HashMap<String, Double> maxOverlapScore = new HashMap<String, Double>();
       HashMap<String, Double> minOverlapScore = new HashMap<String, Double>();
+      
+      // custom max/min
+      double maxLncltcScore = 0;
+      double minLncltcScore = Double.MAX_VALUE;
       
       for (int i = 0; i < fields.length; i ++) {
         maxBM25Score.put(fields[i], 0.0);
@@ -732,8 +724,6 @@ public class QryEval {	// NOW HW5
         // get url depth and FromWikipedia score
         String rawUrl = d.get("rawUrl");
         double urlDepth = 0;
-        //int fromWikipedia = 0;
-      
         int idTmp = 0;      
         while ((idTmp = rawUrl.indexOf("/", idTmp)) < rawUrl.length() && idTmp != -1) {
     	  idTmp ++;
@@ -776,21 +766,7 @@ public class QryEval {	// NOW HW5
             TermVector tv = new TermVector(docID, fields[i]);
           
             // get BM25 score
-            int N = QryEval.READER.getDocCount(fields[i]);
-            long lengthC = QryEval.READER.getSumTotalTermFreq(fields[i]);
-            double avg_doclen = lengthC / (double)N;
-            long doclen = s.getDocLength(fields[i], docID);
-            
-            double totalBM25Score = 0.0;
-            for (int j = 0; j < tv.stemsLength(); j ++) {
-              if (queryStems.contains(tv.stemString(j))) {
-                int tf = tv.stemFreq(j);
-                int df = tv.stemDf(j);
-                double idf = Math.log((N - df + 0.5) / (df + 0.5));
-                double tfWeight = (double)tf / (tf + k_1 * (1 - b + b * (doclen / (double) avg_doclen)));
-                totalBM25Score += (double)idf * tfWeight * (k_3 + 1) / (double)(k_3 + 1);
-              }
-            }
+            double totalBM25Score = getBM25Score(docID, fields[i], queryStems, k_1, b, k_3);
             BM25Scores.get(idForList).put(fields[i], totalBM25Score);
             if (totalBM25Score > maxBM25Score.get(fields[i])) {
               maxBM25Score.put(fields[i], totalBM25Score);
@@ -799,44 +775,8 @@ public class QryEval {	// NOW HW5
               minBM25Score.put(fields[i], totalBM25Score);              
             }
           
-            // get Indri score
-            
-            double indriScore = 1.0;
-            boolean matchFlag = false;
-            HashMap<String, Integer> stemToTf = new HashMap<String, Integer>();
-            for (int j = 0; j < tv.stemsLength(); j ++) {
-              stemToTf.put(tv.stemString(j), tv.stemFreq(j));
-            }
-            for (String stem : queryStems) {
-              long ctf = QryEval.READER.totalTermFreq (new Term (fields[i], new BytesRef(stem)));
-              double p_qi_C = ctf / (double) lengthC;
-              int tf = 0;
-              if (stemToTf.containsKey(stem)) {
-            	matchFlag = true;
-                tf = stemToTf.get(stem);
-              }
-              double p_qi_d = (tf + mu * p_qi_C) / (double)(doclen + mu);
-              indriScore *= lambda * p_qi_d + (1 - lambda) * p_qi_C;
-            }
-            
-            /*double indriScore = 1.0;
-            boolean matchFlag = false;
-            for (int j = 0; j < tv.stemsLength(); j ++) {
-              if (queryStems.contains(tv.stemString(j))) {
-            	matchFlag = true;
-            	long ctf = tv.totalStemFreq(j);
-                double p_qi_C = ctf / (double) lengthC;
-                int tf = tv.stemFreq(j);
-                double p_qi_d = (tf + mu * p_qi_C) / (double)(doclen + mu);
-                indriScore *= lambda * p_qi_d + (1 - lambda) * p_qi_C;                               
-              }
-            }*/
-            if (matchFlag) {
-              indriScore = Math.pow(indriScore, 1/(double)queryStems.size());
-            }
-            else {
-              indriScore = 0.0;
-            }
+            // get Indri score            
+            double indriScore = getIndriScore(docID, fields[i], queryStems, mu, lambda);
             IndriScores.get(idForList).put(fields[i], indriScore);
             if (indriScore > maxIndriScore.get(fields[i])) {
               maxIndriScore.put(fields[i], indriScore);
@@ -862,6 +802,25 @@ public class QryEval {	// NOW HW5
             }            
           }
         }
+        
+        // get lnc.ltc score
+        Terms terms = QryEval.READER.getTermVector(docID, "body");
+        if (terms == null) {
+          // field doesn't exist!
+          //System.out.println("Doc missing field: " + docID + " " + fields[i]);
+      	  lncltcScores.add(Double.MAX_VALUE);
+        }
+        else {
+    	  double lncltcScore = getLncLtcScore(docID, "body", queryStems);
+          lncltcScores.add(lncltcScore);
+          if (lncltcScore > maxLncltcScore) {
+            maxLncltcScore = lncltcScore;
+          }
+          else if (lncltcScore < minLncltcScore) {
+            minLncltcScore = lncltcScore;              
+          } 
+        }
+        
       }
       
       // normalize feature values
@@ -925,13 +884,21 @@ public class QryEval {	// NOW HW5
           }          
         }
         
+        // normalize lnc.ltc scores
+        if (maxLncltcScore != minLncltcScore && lncltcScores.get(i) != Double.MAX_VALUE) {
+          lncltcScores.set(i, (lncltcScores.get(i) - minLncltcScore) / (maxLncltcScore - minLncltcScore));
+        }
+        else {
+          lncltcScores.set(i, 0.0);
+        } 
+        
       }
       
       // write the feature vectors to file
       for (int i = 0; i < docIDs.size(); i ++) {
         bwFeatureTest.write("0 qid:" + qid + " ");
         
-        for (int j = 1; j <= 16; j ++) {
+        for (int j = 1; j <= 17; j ++) {
           if (!disableIDs.contains(j)) {
         	bwFeatureTest.write(j + ":" + "");
             switch (j) {
@@ -982,6 +949,9 @@ public class QryEval {	// NOW HW5
               break;
             case 16:
               bwFeatureTest.write(overlapScores.get(i).get("inlink").toString());
+              break;
+            case 17:  
+              bwFeatureTest.write(lncltcScores.get(i).toString());
               break;
             }
             bwFeatureTest.write(" ");
@@ -1063,6 +1033,129 @@ public class QryEval {	// NOW HW5
 
   }
 
+  
+  /**
+   * Get BM25 score
+   * @param docID
+   * @param field
+   * @param queryStems
+   * @param k_1
+   * @param b
+   * @param k_3
+   * @return
+   * @throws IOException
+   */
+  static double getBM25Score(int docID, String field, ArrayList<String> queryStems, 
+		  double k_1, double b, double k_3) throws IOException {
+	  // get BM25 score
+	  TermVector tv = new TermVector(docID, field);
+	  DocLengthStore s = new DocLengthStore(READER);
+      int N = QryEval.READER.getDocCount(field);
+      //long lengthC = QryEval.READER.getSumTotalTermFreq(field);
+      double avg_doclen = QryEval.READER.getSumTotalTermFreq(field) / (double)N;
+      long doclen = s.getDocLength(field, docID);
+      
+      double totalBM25Score = 0.0;
+      for (int j = 1; j < tv.stemsLength(); j ++) {
+        if (queryStems.contains(tv.stemString(j))) {
+          int tf = tv.stemFreq(j);
+          int df = tv.stemDf(j);
+          int qtf = 1;
+          double idf = Math.log((N - df + 0.5) / (df + 0.5));
+          double tfWeight = tf / (tf + k_1 * ((1 - b) + b * doclen / avg_doclen));
+          double userWeight = (k_3 + 1) * qtf / (double)(k_3 + qtf);          
+          totalBM25Score += idf * tfWeight * userWeight;
+          /*totalBM25Score += Math.log((N - df + 0.5) / (df + 0.5)) * 
+        		  tf / (tf + k_1 * (1 - b + b * (doclen / (double) avg_doclen))) *
+        		  (k_3 + 1) / (double)(k_3 + 1);*/
+        }
+      }
+      return totalBM25Score;
+  }
+  
+  /**
+   * Get Indri score
+   * @param docID
+   * @param field
+   * @param queryStems
+   * @param mu
+   * @param lambda
+   * @return
+   * @throws IOException
+   */
+  static double getIndriScore(int docID, String field, ArrayList<String> queryStems, 
+		  double mu, double lambda) throws IOException {
+	  double indriScore = 1.0;
+      boolean matchFlag = false;
+      HashMap<String, Integer> stemToTf = new HashMap<String, Integer>();
+      long lengthC = QryEval.READER.getSumTotalTermFreq(field);
+      TermVector tv = new TermVector(docID, field);
+      DocLengthStore s = new DocLengthStore(READER);
+      long doclen = s.getDocLength(field, docID);
+      
+      for (int j = 1; j < tv.stemsLength(); j ++) {
+        stemToTf.put(tv.stemString(j), tv.stemFreq(j));
+      }
+      for (String stem : queryStems) {
+        long ctf = QryEval.READER.totalTermFreq (new Term (field, new BytesRef(stem)));
+        double p_qi_C = ctf / (double) lengthC;
+        int tf = 0;
+        if (stemToTf.containsKey(stem)) {
+      	matchFlag = true;
+          tf = stemToTf.get(stem);
+        }
+        double p_qi_d = (tf + mu * p_qi_C) / (double)(doclen + mu);
+        indriScore *= lambda * p_qi_d + (1 - lambda) * p_qi_C;
+      }
+
+      if (matchFlag) {
+        indriScore = Math.pow(indriScore, 1/(double)queryStems.size());
+      }
+      else {
+        indriScore = 0.0;
+      }
+      return indriScore;
+  }
+  
+  /**
+   * Get lnc.ltc score
+   * @param docID
+   * @param queryStems
+   * @return
+   * @throws IOException
+   */
+  static double getLncLtcScore(int docID, String field, ArrayList<String> queryStems) throws IOException {
+	TermVector tv = new TermVector(docID, field);
+    DocLengthStore s = new DocLengthStore(READER);
+    int N = QryEval.READER.getDocCount(field);
+    
+    double docVecLen = 0.0;
+    for (int i = 1; i < tv.stemsLength(); i ++) {
+      docVecLen += Math.pow(Math.log(tv.stemFreq(i)) + 1.0, 2.0);
+    }
+    docVecLen = Math.sqrt(docVecLen);
+    
+    double qryVecLen = 0.0;
+    for (String stem : queryStems) {
+      int df = QryEval.READER.docFreq(new Term (field, new BytesRef(stem)));
+      int qtf = 1;
+      qryVecLen += Math.pow((Math.log(qtf) + 1.0) * Math.log(N / (double)df), 2.0);
+    }
+    qryVecLen = Math.sqrt(qryVecLen);
+    
+    double scoreRaw = 0.0;
+    for (int i = 1; i < tv.stemsLength(); i ++) {
+      if (queryStems.contains(tv.stemString(i))) {
+    	int df = QryEval.READER.docFreq(new Term (field, new BytesRef(tv.stemString(i))));
+    	int qtf = 1;
+        scoreRaw += (Math.log(tv.stemFreq(i)) + 1.0) * 
+        		((Math.log(qtf) + 1.0) * Math.log(N / (double)df)); 
+      }
+    }    
+    double score = scoreRaw / (docVecLen * qryVecLen);
+    
+    return score;
+  }
   
   /**
    *  Write an error message and exit.  This can be done in other

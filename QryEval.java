@@ -249,6 +249,7 @@ public class QryEval {	// NOW HW5
       
       // custom features
       ArrayList<Double> lncltcScores = new ArrayList<Double>();
+      ArrayList<Double> tfIdfScores = new ArrayList<Double>();
       
       double maxSpamScore = 0;
       double minSpamScore = 99;
@@ -268,6 +269,8 @@ public class QryEval {	// NOW HW5
       // custom max/min
       double maxLncltcScore = 0;
       double minLncltcScore = Double.MAX_VALUE;
+      double maxTfIdfScore = 0;
+      double minTfIdfScore = Double.MAX_VALUE;
       
       for (int i = 0; i < fields.length; i ++) {
         maxBM25Score.put(fields[i], 0.0);
@@ -283,7 +286,7 @@ public class QryEval {	// NOW HW5
         //double pageRank = 0;     
       
         String exDocID = QryEval.getExternalDocid(docID);
-      
+             
         // get page rank
         if (pageRanksWhole.containsKey(exDocID)) {
           double rankTmp = pageRanksWhole.get(exDocID);
@@ -309,6 +312,12 @@ public class QryEval {	// NOW HW5
         else if (spamScore < minSpamScore) {
           minSpamScore = spamScore;
         }
+        
+        /*List<IndexableField> fieldList = d.getFields();
+        for (IndexableField field : fieldList) {
+          System.out.println(field.name());
+        }*/
+        //System.out.println(d.get("date"));
       
         // get url depth and FromWikipedia score
         String rawUrl = d.get("rawUrl");
@@ -391,21 +400,29 @@ public class QryEval {	// NOW HW5
           }
         }
         
-        // get lnc.ltc score
+        // get lnc.ltc score and tf-idf score
         Terms terms = QryEval.READER.getTermVector(docID, "body");
         if (terms == null) {
           // field doesn't exist!
-          //System.out.println("Doc missing field: " + docID + " " + fields[i]);
       	  lncltcScores.add(Double.MAX_VALUE);
+      	  tfIdfScores.add(Double.MAX_VALUE);
         }
         else {
     	  double lncltcScore = getLncLtcScore(docID, "body", queryStems);
+    	  double tfIdfScore = getTfIdfSum(docID, "body", queryStems);
           lncltcScores.add(lncltcScore);
+          tfIdfScores.add(tfIdfScore);
           if (lncltcScore > maxLncltcScore) {
             maxLncltcScore = lncltcScore;
           }
           else if (lncltcScore < minLncltcScore) {
             minLncltcScore = lncltcScore;              
+          } 
+          if (tfIdfScore > maxTfIdfScore) {
+            maxTfIdfScore = tfIdfScore;
+          }
+          else if (tfIdfScore < minTfIdfScore) {
+            minTfIdfScore = tfIdfScore;              
           } 
         }
         
@@ -480,13 +497,21 @@ public class QryEval {	// NOW HW5
           lncltcScores.set(i, 0.0);
         } 
         
+        // normalize tf-idf scores
+        if (maxTfIdfScore != minTfIdfScore && tfIdfScores.get(i) != Double.MAX_VALUE) {
+          tfIdfScores.set(i, (tfIdfScores.get(i) - minTfIdfScore) / (maxTfIdfScore - minTfIdfScore));
+        }
+        else {
+          tfIdfScores.set(i, 0.0);
+        } 
+        
       }
       
       // write the feature vectors to file
       for (int i = 0; i < docIDs.size(); i ++) {
         bwFeatureTrain.write(rels.get(i) + " qid:" + qid + " ");
         
-        for (int j = 1; j <= 17; j ++) {
+        for (int j = 1; j <= 18; j ++) {
           if (!disableIDs.contains(j)) {
         	bwFeatureTrain.write(j + ":" + "");
             switch (j) {
@@ -540,6 +565,9 @@ public class QryEval {	// NOW HW5
               break;
             case 17:  
               bwFeatureTrain.write(lncltcScores.get(i).toString());
+              break;
+            case 18:  
+              bwFeatureTrain.write(tfIdfScores.get(i).toString());
               break;
             }
             bwFeatureTrain.write(" ");
@@ -660,6 +688,7 @@ public class QryEval {	// NOW HW5
       
       // custom features
       ArrayList<Double> lncltcScores = new ArrayList<Double>();
+      ArrayList<Double> tfIdfScores = new ArrayList<Double>();
       
       double maxSpamScore = 0;
       double minSpamScore = 99;
@@ -679,6 +708,8 @@ public class QryEval {	// NOW HW5
       // custom max/min
       double maxLncltcScore = 0;
       double minLncltcScore = Double.MAX_VALUE;
+      double maxTfIdfScore = 0;
+      double minTfIdfScore = Double.MAX_VALUE;
       
       for (int i = 0; i < fields.length; i ++) {
         maxBM25Score.put(fields[i], 0.0);
@@ -720,6 +751,8 @@ public class QryEval {	// NOW HW5
         else if (spamScore < minSpamScore) {
           minSpamScore = spamScore;
         }
+        
+        //System.out.println(d.get("date"));
       
         // get url depth and FromWikipedia score
         String rawUrl = d.get("rawUrl");
@@ -803,21 +836,29 @@ public class QryEval {	// NOW HW5
           }
         }
         
-        // get lnc.ltc score
+        // get lnc.ltc score and tf-idf score
         Terms terms = QryEval.READER.getTermVector(docID, "body");
         if (terms == null) {
           // field doesn't exist!
-          //System.out.println("Doc missing field: " + docID + " " + fields[i]);
       	  lncltcScores.add(Double.MAX_VALUE);
+      	  tfIdfScores.add(Double.MAX_VALUE);
         }
         else {
     	  double lncltcScore = getLncLtcScore(docID, "body", queryStems);
+    	  double tfIdfScore = getTfIdfSum(docID, "body", queryStems);
           lncltcScores.add(lncltcScore);
+          tfIdfScores.add(tfIdfScore);
           if (lncltcScore > maxLncltcScore) {
             maxLncltcScore = lncltcScore;
           }
           else if (lncltcScore < minLncltcScore) {
             minLncltcScore = lncltcScore;              
+          } 
+          if (tfIdfScore > maxTfIdfScore) {
+            maxTfIdfScore = tfIdfScore;
+          }
+          else if (tfIdfScore < minTfIdfScore) {
+            minTfIdfScore = tfIdfScore;              
           } 
         }
         
@@ -892,13 +933,21 @@ public class QryEval {	// NOW HW5
           lncltcScores.set(i, 0.0);
         } 
         
+        // normalize tf-idf scores
+        if (maxTfIdfScore != minTfIdfScore && tfIdfScores.get(i) != Double.MAX_VALUE) {
+          tfIdfScores.set(i, (tfIdfScores.get(i) - minTfIdfScore) / (maxTfIdfScore - minTfIdfScore));
+        }
+        else {
+          tfIdfScores.set(i, 0.0);
+        } 
+        
       }
       
       // write the feature vectors to file
       for (int i = 0; i < docIDs.size(); i ++) {
         bwFeatureTest.write("0 qid:" + qid + " ");
         
-        for (int j = 1; j <= 17; j ++) {
+        for (int j = 1; j <= 18; j ++) {
           if (!disableIDs.contains(j)) {
         	bwFeatureTest.write(j + ":" + "");
             switch (j) {
@@ -952,6 +1001,9 @@ public class QryEval {	// NOW HW5
               break;
             case 17:  
               bwFeatureTest.write(lncltcScores.get(i).toString());
+              break;
+            case 18:  
+              bwFeatureTest.write(tfIdfScores.get(i).toString());
               break;
             }
             bwFeatureTest.write(" ");
@@ -1024,8 +1076,6 @@ public class QryEval {	// NOW HW5
     bwOut.close();    
 
     
-    
-
     // Later HW assignments will use more RAM, so you want to be aware
     // of how much memory your program uses.
 
@@ -1126,7 +1176,7 @@ public class QryEval {	// NOW HW5
    */
   static double getLncLtcScore(int docID, String field, ArrayList<String> queryStems) throws IOException {
 	TermVector tv = new TermVector(docID, field);
-    DocLengthStore s = new DocLengthStore(READER);
+    //DocLengthStore s = new DocLengthStore(READER);
     int N = QryEval.READER.getDocCount(field);
     
     double docVecLen = 0.0;
@@ -1152,10 +1202,34 @@ public class QryEval {	// NOW HW5
         		((Math.log(qtf) + 1.0) * Math.log(N / (double)df)); 
       }
     }    
-    double score = scoreRaw / (docVecLen * qryVecLen);
-    
+    double score = scoreRaw / (docVecLen * qryVecLen);   
     return score;
   }
+  
+  /**
+   * Get the sum of tf-idf scores
+   * @param docID
+   * @param field
+   * @param queryStems
+   * @return
+   * @throws IOException
+   */
+  static double getTfIdfSum (int docID, String field, ArrayList<String> queryStems) throws IOException {
+    TermVector tv = new TermVector(docID, field);
+    int N = QryEval.READER.getDocCount(field);
+    
+    double tfIdfSum = 0.0;
+    for (int i = 1; i < tv.stemsLength(); i ++) {
+      if (queryStems.contains(tv.stemString(i))) {
+        int df = QryEval.READER.docFreq(new Term (field, new BytesRef(tv.stemString(i))));
+        int tf = tv.stemFreq(i);
+        double idf = Math.log(N / (double)df);
+        tfIdfSum += tf * idf;
+      }
+    }
+    return tfIdfSum;
+  }
+  
   
   /**
    *  Write an error message and exit.  This can be done in other

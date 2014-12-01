@@ -12,6 +12,7 @@ letor:svmRankParamC=0.001
 letor:svmRankModelFile=rank_model
 letor:testingFeatureVectorsFile=features_test.txt
 letor:testingDocumentScores=test_scores.txt
+letor:featureDisable=1,2,3,4,7,10,13,16,17,18
 Indri:mu=2500
 Indri:lambda=0.4
 BM25:k_1=1.2

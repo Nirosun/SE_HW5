@@ -129,6 +129,7 @@ public class QryopSlScore extends QryopSl {
     QryResult result = args.get(0).evaluate(r);
     
     int N = QryEval.READER.getDocCount(result.invertedList.field);
+    //int N = QryEval.READER.numDocs();
     double avg_doclen = QryEval.READER.getSumTotalTermFreq(result.invertedList.field) / (double)N;
     //DocLengthStore dls = new DocLengthStore(QryEval.READER);
     int df = result.invertedList.df;

@@ -620,8 +620,8 @@ public class QryEval {	// NOW HW5
     
     RetrievalModel model = new RetrievalModelBM25();
     model.setParameter("k_1", k_1);
-    model.setParameter("b", k_1);
-    model.setParameter("k_3", k_1);    
+    model.setParameter("b", b);
+    model.setParameter("k_3", k_3);    
     
     String tmp = null;
     int nDoc = 100;
@@ -641,6 +641,7 @@ public class QryEval {	// NOW HW5
       qTree = parseQuery (query[1], model);
       System.out.println(query[0] + ":" + query[1]);
       QryResult result = qTree.evaluate (model);
+      //outputResults(BufferedWriter writer, qid, result, nDoc, model);
       int sz = result.docScores.scores.size();
       
       List resultList = new ArrayList();  // list of query results     
@@ -653,6 +654,7 @@ public class QryEval {	// NOW HW5
       for (int i = 0; i < nDoc && i < sz; i ++) {
     	ResultElement elemTmp = (ResultElement)resultList.get(i);
         qidToDocIDsTest.get(qid).add(elemTmp.getId());
+        //System.out.println("Score: " + elemTmp.getScore() + "  ID: " + elemTmp.getId());
       }      
     }
     br.close();
@@ -673,8 +675,12 @@ public class QryEval {	// NOW HW5
       //ArrayList<Integer> rels = qidToRels.get(qid);     
       ArrayList<Integer> docIDs = new ArrayList<Integer>();
       
-      for (String exID : exDocIDs) {
+      /*for (String exID : exDocIDs) {
     	docIDs.add(QryEval.getInternalDocid(exID));
+      }*/
+      
+      for (int i = 0; i < exDocIDs.size(); i ++) {
+        docIDs.add(QryEval.getInternalDocid(exDocIDs.get(i)));
       }
       
       // define features for each specific query
@@ -721,7 +727,8 @@ public class QryEval {	// NOW HW5
       }    
       
       // for each document for this query
-      for (Integer docID : docIDs) {
+      for (int cnt = 0; cnt < docIDs.size(); cnt ++) {
+    	int docID = docIDs.get(cnt);
         //double pageRank = 0;     
       
         String exDocID = QryEval.getExternalDocid(docID);
@@ -1100,9 +1107,10 @@ public class QryEval {	// NOW HW5
 	  // get BM25 score
 	  TermVector tv = new TermVector(docID, field);
 	  DocLengthStore s = new DocLengthStore(READER);
-      int N = QryEval.READER.getDocCount(field);
+      //int N = QryEval.READER.getDocCount(field);
+	  int N = QryEval.READER.numDocs();
       //long lengthC = QryEval.READER.getSumTotalTermFreq(field);
-      double avg_doclen = QryEval.READER.getSumTotalTermFreq(field) / (double)N;
+      double avg_doclen = QryEval.READER.getSumTotalTermFreq(field) / (double)QryEval.READER.getDocCount(field);
       long doclen = s.getDocLength(field, docID);
       
       double totalBM25Score = 0.0;
